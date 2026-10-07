@@ -117,6 +117,8 @@ services:
 
 A dimensão configurada precisa coincidir com a dimensão real retornada pelo modelo e com o mapping `dense_vector` do índice de chunks.
 
+Para backends vLLM, `truncate_prompt_tokens` pode limitar a entrada ao contexto do modelo (por exemplo, `256` para um deployment MiniLM com esse limite). A opção é omitida por padrão. Ajuste também o chunking para blocos menores: o truncamento descarta tokens excedentes apenas na vetorização, preservando o texto armazenado, e pode reduzir a qualidade da busca. Os tokens do chunking são estimados por palavras e podem diferir dos tokens reais do modelo.
+
 ## Verificação na inicialização
 
 ```yaml

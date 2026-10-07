@@ -160,6 +160,7 @@ class EmbeddingSettings(StrictModel):
     dimensions: int = Field(gt=0)
     batch_size: int = Field(default=32, ge=1, le=512)
     timeout_seconds: float = 120.0
+    truncate_prompt_tokens: int | None = Field(default=None, ge=1)
 
 
 class ServicesSettings(StrictModel):

@@ -32,9 +32,12 @@ class EmbeddingClient:
     def embed(self, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
+        request_payload = {"model": self.settings.model, "input": texts}
+        if self.settings.truncate_prompt_tokens is not None:
+            request_payload["truncate_prompt_tokens"] = self.settings.truncate_prompt_tokens
         response = self.client.post(
             f"{self.settings.endpoint.rstrip('/')}/{self.settings.path.lstrip('/')}",
-            json={"model": self.settings.model, "input": texts},
+            json=request_payload,
         )
         response.raise_for_status()
         payload = response.json()

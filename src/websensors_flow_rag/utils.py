@@ -30,6 +30,8 @@ def pipeline_hash(settings: RAGSettings) -> str:
             "dimensions": settings.services.embeddings.dimensions,
         },
     }
+    if settings.services.embeddings.truncate_prompt_tokens is not None:
+        payload["embedding"]["truncate_prompt_tokens"] = settings.services.embeddings.truncate_prompt_tokens
     encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
