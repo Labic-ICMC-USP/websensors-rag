@@ -1,0 +1,22 @@
+site_name: WebSensors Flow RAG
+site_description: Documentação do serviço de indexação e recuperação documental
+
+theme:
+  name: material
+  language: pt-BR
+
+nav:
+  - Início: index.md
+  - Arquitetura: arquitetura.md
+  - Configuração: configuracao.md
+  - API: api.md
+  - Infraestrutura: infraestrutura.md
+  - Solução de problemas: solucao_problemas.md
+  - Observabilidade: tutorial_observabilidade.md
+  - Tutoriais:
+      - Indexação: tutorial_indexacao.md
+      - Notebook Jupyter: tutorial_jupyter.md
+      - Busca BM25: tutorial_busca_bm25.md
+      - Busca semântica: tutorial_busca_semantica.md
+      - Busca híbrida: tutorial_busca_hibrida.md
+      - Integração OpenAPI: tutorial_openapi.md

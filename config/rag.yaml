@@ -1,0 +1,164 @@
+project:
+  name: websensors-flow-rag
+  version: "0.4.1"
+  description: "Serviço de indexação e recuperação documental para RAG."
+
+environment:
+  name: local
+  deployment_id: rag-local
+  owner: labic
+  tags:
+    sistema: websensors-flow-rag
+    dominio: recuperacao-documental
+
+runtime:
+  report_dir: ./outputs/reports
+  include_traceback: true
+  raise_on_failure: false
+  console:
+    enabled: true
+    progress: true
+    show_metrics: true
+
+observability:
+  mlflow:
+    enabled: false
+    tracking_uri: "http://mlflow:5000"
+    experiment_name: "websensors-flow-rag"
+    run_name: "indexacao-rag"
+    http_request_timeout: 5
+    connect_timeout_seconds: 3
+    track_searches: true
+    auth:
+      enabled: false
+      username: null
+      password: null
+      token: null
+  graylog:
+    enabled: false
+    host: "graylog"
+    port: 12201
+    protocol: tcp
+    facility: websensors-flow-rag
+    level: INFO
+    connect_timeout_seconds: 3
+    auth:
+      enabled: false
+      username: null
+      password: null
+      token: null
+
+services:
+  minio:
+    endpoint: "http://minio:9000"
+    access_key: "ALTERE_AQUI"
+    secret_key: "ALTERE_AQUI"
+    secure: false
+    region: null
+    bronze_bucket: rag-bronze
+    silver_bucket: rag-silver
+    silver_prefix: documentos
+    timeout_seconds: 10
+
+  elasticsearch:
+    endpoint: "http://elasticsearch:9200"
+    username: "elastic"
+    password: "ALTERE_AQUI"
+    api_key: null
+    verify_certs: false
+    ca_cert: null
+    timeout_seconds: 30
+    index_creation_timeout_seconds: 180
+    indices:
+      documents: websensors-rag-documents-v1
+      chunks: websensors-rag-chunks-v1
+    aliases:
+      documents: websensors-rag-documents
+      chunks: websensors-rag-chunks
+    shards: 1
+    replicas: 0
+
+  docling:
+    endpoint: "http://docling:5001"
+    api_key: null
+    timeout_seconds: 600
+    poll_interval_seconds: 1
+    options:
+      from_formats:
+        - pdf
+        - image
+        - docx
+        - pptx
+        - html
+        - md
+        - xlsx
+      image_export_mode: placeholder
+      do_ocr: true
+      force_ocr: false
+      pdf_backend: dlparse_v4
+      table_mode: accurate
+      ocr_preset: rapidocr
+      pipeline: standard
+      abort_on_error: false
+      do_table_structure: true
+      do_picture_description: true
+      picture_description_preset: labic_vision
+      do_picture_classification: true
+
+
+  embeddings:
+    endpoint: "http://litellm:4000/v1"
+    path: /embeddings
+    api_key: "ALTERE_AQUI"
+    model: inpi-text-embedding
+    dimensions: 1024
+    batch_size: 32
+    timeout_seconds: 120
+
+startup:
+  enabled: true
+  retries: 2
+  retry_interval_seconds: 2
+  timeout_seconds: 10
+  validate_embedding_vector: true
+  check_mlflow_write: true
+
+indexing:
+  processing_version: "1"
+  chunking:
+    strategy: structural
+    target_tokens: 600
+    max_tokens: 900
+    overlap_tokens: 80
+    min_chunk_tokens: 40
+  update:
+    compare_source_hash: true
+    compare_pipeline_hash: true
+
+search:
+  default_top_k: 10
+  max_top_k: 50
+  lexical:
+    fields:
+      - title^3
+      - heading_text^2.5
+      - section^2
+      - content
+  semantic:
+    candidates: 50
+    num_candidates: 200
+  hybrid:
+    rank_window_size: 50
+    rank_constant: 60
+
+api:
+  title: "WebSensors Flow RAG API"
+  description: "API para indexação, atualização e recuperação documental."
+  host: "0.0.0.0"
+  port: 8000
+  indexing_workers: 4
+  event_history_limit: 1000
+  cors_origins: []
+  auth:
+    enabled: false
+    token: null

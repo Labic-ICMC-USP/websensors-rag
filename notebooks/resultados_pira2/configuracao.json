@@ -1,0 +1,11 @@
+{
+  "dataset": "paulopirozelli/pira",
+  "split": "test",
+  "colecao": "pira2_test",
+  "documentos_indexados": 120,
+  "consultas_avaliadas": 30,
+  "limite_documentos": 120,
+  "k_avaliacao": 10,
+  "top_k_api": 30,
+  "semente": 42
+}

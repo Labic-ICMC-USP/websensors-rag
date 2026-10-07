@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>WebSensors Flow RAG Explorer</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">WF</div>
+        <div>
+          <strong>WebSensors Flow RAG</strong>
+          <span>Explorer</span>
+        </div>
+      </div>
+
+      <nav class="nav" aria-label="Navegação principal">
+        <button class="nav-item active" data-view="search">
+          <span class="nav-icon">⌕</span>
+          <span>Busca</span>
+        </button>
+        <button class="nav-item" data-view="documents">
+          <span class="nav-icon">▤</span>
+          <span>Documentos</span>
+        </button>
+        <button class="nav-item" data-view="service">
+          <span class="nav-icon">◉</span>
+          <span>Serviço</span>
+        </button>
+        <button class="nav-item" data-view="openapi">
+          <span class="nav-icon">{ }</span>
+          <span>OpenAPI</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="connection-state" id="connectionState">
+          <span class="status-dot neutral"></span>
+          <span>Não verificado</span>
+        </div>
+        <button class="text-button" id="openSettings">Configuração</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 id="pageTitle">Busca</h1>
+          <p id="pageSubtitle">Explore BM25, busca semântica e busca híbrida</p>
+        </div>
+        <div class="top-actions">
+          <span class="endpoint-pill" id="endpointPill">localhost:8765</span>
+          <button class="secondary-button" id="checkHealth">Verificar serviço</button>
+        </div>
+      </header>
+
+      <section class="view active" id="view-search">
+        <div class="search-layout">
+          <section class="panel search-panel">
+            <div class="panel-header compact">
+              <div>
+                <h2>Consulta</h2>
+                <p>Escolha a estratégia e envie a mesma consulta para o endpoint selecionado</p>
+              </div>
+            </div>
+
+            <form id="searchForm">
+              <div class="field">
+                <label for="queryInput">Texto da consulta</label>
+                <textarea id="queryInput" rows="4" placeholder="Exemplo  mudanças climáticas e impacto nos oceanos" required></textarea>
+              </div>
+
+              <div class="search-modes" role="radiogroup" aria-label="Modo de busca">
+                <label class="mode-card selected">
+                  <input type="radio" name="mode" value="hybrid" checked>
+                  <span class="mode-name">Híbrida</span>
+                  <span class="mode-description">Combina BM25 e kNN por RRF</span>
+                </label>
+                <label class="mode-card">
+                  <input type="radio" name="mode" value="bm25">
+                  <span class="mode-name">BM25</span>
+                  <span class="mode-description">Correspondência lexical</span>
+                </label>
+                <label class="mode-card">
+                  <input type="radio" name="mode" value="semantic">
+                  <span class="mode-name">Semântica</span>
+                  <span class="mode-description">Similaridade vetorial</span>
+                </label>
+              </div>
+
+              <div class="form-grid three">
+                <div class="field">
+                  <label for="topKInput">Top K</label>
+                  <input id="topKInput" type="number" min="1" max="500" value="10">
+                </div>
+                <div class="field checkbox-field">
+                  <label class="check-row">
+                    <input id="debugInput" type="checkbox" checked>
+                    <span>Incluir debug</span>
+                  </label>
+                </div>
+                <div class="field">
+                  <label>&nbsp;</label>
+                  <button type="button" class="secondary-button full" id="compareModes">Comparar 3 modos</button>
+                </div>
+              </div>
+
+              <details class="filters-box">
+                <summary>Filtros</summary>
+                <div class="filters-content">
+                  <p class="help">Adicione filtros exatos. Chaves não reconhecidas são tratadas como metadados.</p>
+                  <div id="filtersList"></div>
+                  <button type="button" class="text-button add-filter" id="addFilter">Adicionar filtro</button>
+                </div>
+              </details>
+
+              <div class="form-actions">
+                <button class="primary-button" type="submit">
+                  <span>Executar busca</span>
+                  <span class="shortcut">Ctrl Enter</span>
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <section class="panel stats-panel" id="statsPanel">
+            <div class="stat">
+              <span class="stat-label">Modo</span>
+              <strong id="statMode">—</strong>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Resultados</span>
+              <strong id="statCount">—</strong>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Tempo total</span>
+              <strong id="statTook">—</strong>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Endpoint</span>
+              <strong id="statEndpoint">—</strong>
+            </div>
+          </section>
+        </div>
+
+        <section class="results-section">
+          <div class="section-title-row">
+            <div>
+              <h2>Resultados</h2>
+              <p id="resultsCaption">Execute uma consulta para explorar os chunks recuperados</p>
+            </div>
+            <div class="view-toggle" id="resultsViewToggle">
+              <button class="toggle-button active" data-result-view="cards">Cards</button>
+              <button class="toggle-button" data-result-view="table">Tabela</button>
+              <button class="toggle-button" data-result-view="json">JSON</button>
+            </div>
+          </div>
+          <div id="resultsContainer" class="results-container empty-state">
+            <div class="empty-illustration">⌕</div>
+            <h3>Nenhuma busca executada</h3>
+            <p>A resposta detalhada será exibida aqui</p>
+          </div>
+        </section>
+
+        <section class="panel debug-panel hidden" id="debugPanel">
+          <div class="panel-header compact">
+            <div>
+              <h2>Debug da recuperação</h2>
+              <p>Informações retornadas pelo endpoint para inspeção da estratégia</p>
+            </div>
+            <button class="icon-button" id="copyDebug" title="Copiar JSON">Copiar</button>
+          </div>
+          <pre id="debugJson" class="json-block"></pre>
+        </section>
+      </section>
+
+      <section class="view" id="view-documents">
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>Documentos indexados</h2>
+              <p>Liste documentos e abra os metadados de cada item</p>
+            </div>
+            <div class="inline-actions">
+              <select id="documentsLimit" aria-label="Limite de documentos">
+                <option value="25">25</option>
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+              </select>
+              <button class="primary-button" id="loadDocuments">Carregar</button>
+            </div>
+          </div>
+          <div id="documentsContainer" class="empty-state compact-empty">
+            <h3>Documentos ainda não carregados</h3>
+            <p>Use o botão acima para consultar o índice de documentos</p>
+          </div>
+        </section>
+      </section>
+
+      <section class="view" id="view-service">
+        <div class="service-grid">
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Saúde do serviço</h2>
+                <p>Estado da API e das dependências configuradas</p>
+              </div>
+              <button class="primary-button" id="refreshHealth">Atualizar</button>
+            </div>
+            <div id="healthContainer" class="empty-state compact-empty">
+              <h3>Estado não consultado</h3>
+            </div>
+          </section>
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Descrição do RAG</h2>
+                <p>Capacidades declaradas pelo endpoint</p>
+              </div>
+              <button class="secondary-button" id="loadDescriptor">Consultar</button>
+            </div>
+            <pre id="descriptorJson" class="json-block small-json">Aguardando consulta</pre>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-openapi">
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>Contrato OpenAPI</h2>
+              <p>Explore operações, métodos, parâmetros e schemas publicados pela API</p>
+            </div>
+            <button class="primary-button" id="loadOpenapi">Carregar OpenAPI</button>
+          </div>
+          <div id="openapiSummary" class="openapi-summary hidden"></div>
+          <div id="openapiContainer" class="empty-state compact-empty">
+            <h3>Contrato ainda não carregado</h3>
+            <p>O Explorer consulta automaticamente <code>/openapi.json</code></p>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div class="drawer-backdrop hidden" id="drawerBackdrop"></div>
+  <aside class="drawer" id="settingsDrawer" aria-hidden="true">
+    <div class="drawer-header">
+      <div>
+        <h2>Configuração</h2>
+        <p>Defina o endereço da API usada pelo Explorer</p>
+      </div>
+      <button class="icon-button" id="closeSettings" aria-label="Fechar">×</button>
+    </div>
+    <div class="drawer-body">
+      <div class="field">
+        <label for="endpointInput">Endpoint base</label>
+        <input id="endpointInput" type="url" value="http://localhost:8765" placeholder="http://172.21.0.1:8765">
+        <span class="help">Pode informar a URL base ou colar diretamente a URL do openapi.json</span>
+      </div>
+      <div class="field">
+        <label for="tokenInput">Bearer token opcional</label>
+        <input id="tokenInput" type="password" autocomplete="off" placeholder="Deixe vazio quando a API não usar autenticação">
+      </div>
+      <div class="field checkbox-field left">
+        <label class="check-row">
+          <input id="rememberInput" type="checkbox" checked>
+          <span>Salvar configuração neste navegador</span>
+        </label>
+      </div>
+      <div class="callout info">
+        <strong>Acesso por navegador</strong>
+        <p>Se o Explorer estiver em origem diferente da API, o servidor precisa permitir CORS para esta página.</p>
+      </div>
+    </div>
+    <div class="drawer-footer">
+      <button class="secondary-button" id="testConnection">Testar conexão</button>
+      <button class="primary-button" id="saveSettings">Salvar</button>
+    </div>
+  </aside>
+
+  <div class="modal-backdrop hidden" id="modalBackdrop"></div>
+  <section class="modal" id="detailModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-header">
+      <div>
+        <span class="eyebrow" id="modalEyebrow">Resultado</span>
+        <h2 id="modalTitle">Detalhes</h2>
+      </div>
+      <button class="icon-button" id="closeModal" aria-label="Fechar">×</button>
+    </div>
+    <div class="modal-tabs">
+      <button class="modal-tab active" data-modal-tab="content">Conteúdo</button>
+      <button class="modal-tab" data-modal-tab="metadata">Metadados</button>
+      <button class="modal-tab" data-modal-tab="source">Origem</button>
+      <button class="modal-tab" data-modal-tab="json">JSON</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </section>
+
+  <div class="toast-region" id="toastRegion" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
