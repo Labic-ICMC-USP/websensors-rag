@@ -1,2 +1,2 @@
 # websensors-rag
-Websensors RAG Pipeline
+Websensors RAG Pipeline.
