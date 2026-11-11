@@ -61,3 +61,7 @@ logs/
 tmp/
 temp/
 *.tmp
+
+# MinIO local: licença, cliente e eventuais arquivos de dados
+.local/
+*.license

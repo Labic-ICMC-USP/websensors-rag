@@ -1,0 +1,73 @@
+{
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "document_id": {
+        "type": "keyword"
+      },
+      "revision_id": {
+        "type": "keyword"
+      },
+      "document_type": {
+        "type": "keyword"
+      },
+      "filename": {
+        "type": "keyword"
+      },
+      "extraction_version": {
+        "type": "keyword"
+      },
+      "schema_version": {
+        "type": "keyword"
+      },
+      "active": {
+        "type": "boolean"
+      },
+      "data": {
+        "type": "object",
+        "dynamic": "strict",
+        "properties": {
+          "candidato": {
+            "type": "text"
+          },
+          "curso": {
+            "type": "text"
+          },
+          "instituicao": {
+            "type": "text"
+          },
+          "destinatario": {
+            "type": "text"
+          },
+          "processo_seletivo": {
+            "type": "text"
+          },
+          "motivacao": {
+            "type": "text"
+          },
+          "data": {
+            "type": "text"
+          },
+          "local": {
+            "type": "text"
+          },
+          "competencias": {
+            "type": "text"
+          }
+        }
+      },
+      "source": {
+        "type": "object",
+        "dynamic": "strict",
+        "properties": {
+          "bucket": {
+            "type": "keyword"
+          },
+          "key": {
+            "type": "keyword"
+          }
+        }
+      }
+    }
+  }
+}

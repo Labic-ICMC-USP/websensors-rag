@@ -37,3 +37,39 @@ def test_flow_has_expected_steps():
         "publicar_revisao",
     ]
     assert flow.pipeline.params == {"servico": "rag"}
+
+
+def _environment_config(tmp_path):
+    import yaml
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    raw = yaml.safe_load(CONFIG.read_text())
+    raw["services"]["embeddings"]["api_key"] = "${RAG_TEST_API_KEY}"
+    path = config_dir / "rag.yaml"
+    path.write_text(yaml.safe_dump(raw))
+    return path
+
+
+def test_api_key_from_project_dotenv(tmp_path, monkeypatch):
+    monkeypatch.delenv("RAG_TEST_API_KEY", raising=False)
+    path = _environment_config(tmp_path)
+    (tmp_path / ".env").write_text("RAG_TEST_API_KEY=test-file-secret\n")
+    settings = load_rag_settings(path)
+    assert settings.services.embeddings.api_key == "test-file-secret"
+    assert "RAG_TEST_API_KEY" not in __import__("os").environ
+
+
+def test_process_environment_overrides_dotenv(tmp_path, monkeypatch):
+    path = _environment_config(tmp_path)
+    (tmp_path / ".env").write_text("RAG_TEST_API_KEY=test-file-secret\n")
+    monkeypatch.setenv("RAG_TEST_API_KEY", "test-process-secret")
+    assert load_rag_settings(path).services.embeddings.api_key == "test-process-secret"
+
+
+def test_missing_environment_key_fails_before_client_creation(tmp_path, monkeypatch):
+    import pytest
+    from websensors_flow.exceptions import ConfigurationError
+    monkeypatch.delenv("RAG_TEST_API_KEY", raising=False)
+    path = _environment_config(tmp_path)
+    with pytest.raises(ConfigurationError, match="RAG_TEST_API_KEY"):
+        load_rag_settings(path)

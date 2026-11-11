@@ -4,6 +4,9 @@
 
 O MinIO armazena os arquivos de origem e os artefatos derivados. O Docling centraliza a conversão de PDFs, imagens e outros formatos suportados. A saída documental é preservada em Markdown e JSON. O serviço gera chunks estruturais, cria embeddings e publica os dados no Elasticsearch.
 
+O processamento por projeto pode classificar documentos e extrair dados com
+schemas e evidências via LLM. Consulte [extração estruturada](resources/12_extracao.md).
+
 A recuperação oferece três modalidades.
 
 | Modalidade | Funcionamento |
@@ -142,6 +145,12 @@ search:
     rank_constant: 60
 ```
 
+## Preparar MinIO local
+
+O [guia do MinIO](resources/03_minio.md) usa `compose.minio.yaml` para iniciar
+o AIStor com licença, dados persistentes e buckets Bronze/Silver. O script
+`scripts/minio-init.sh` prepara o usuário do RAG e verifica leitura e escrita.
+
 ## Inicialização
 
 O diagnóstico verifica Elasticsearch, MinIO, Docling e embeddings antes de criar ou validar índices.
@@ -180,6 +189,15 @@ Principais operações.
 | POST | `/search/bm25` | executar busca lexical |
 | POST | `/search/semantic` | executar busca semântica |
 | POST | `/search/hybrid` | executar busca híbrida com RRF |
+
+## Processamento de arquivo local e OpenWebUI
+
+O `ProcessDocumentService` centraliza upload Bronze e execução do Flow. A mesma
+implementação atende o CLI e `POST /api/v1/documents/process`; consulte
+[CLI](docs/tutorial_cli.md) e [OpenWebUI](docs/tutorial_openwebui.md).
+A rota de extrator externo permite guardar Markdown/JSON Docling e reutilizá-los
+na Tool, evitando conversão duplicada. A classificação configurável já está disponível
+([guia](resources/11_classificacao.md)); a extração semântica segue pendente.
 
 ## Exemplo de indexação
 

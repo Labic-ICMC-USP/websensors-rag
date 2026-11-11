@@ -108,7 +108,7 @@ class HealthChecker:
         client.client.timeout = httpx.Timeout(self.settings.startup.timeout_seconds)
         try:
             endpoint = self.settings.services.embeddings.endpoint.rstrip("/")
-            response = client.client.get(f"{endpoint}/models")
+            response = client.client.get(f"{endpoint}/{self.settings.services.embeddings.models_path.lstrip('/')}")
             response.raise_for_status()
             payload = response.json()
             model = self.settings.services.embeddings.model
@@ -116,7 +116,7 @@ class HealthChecker:
             if isinstance(entries, list) and entries:
                 identifiers = {m.get("id") for m in entries if isinstance(m, dict)}
                 if model not in identifiers:
-                    raise RuntimeError(f"Modelo '{model}' não consta em /models")
+                    raise RuntimeError(f"Modelo '{model}' não consta no catálogo configurado")
             if self.settings.startup.validate_embedding_vector:
                 vector = client.embed(["Teste de disponibilidade de embeddings"])[0]
                 return f"modelo={model} dimensoes={len(vector)} inferencia=ok"

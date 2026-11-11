@@ -1,0 +1,145 @@
+{
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "aluno": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "instituicao": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "unidade": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "matricula": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nivel": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "programa": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "situacao": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "orientador": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "data_emissao": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "codigo_autenticidade": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "validade_codigo": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "aluno",
+        "instituicao",
+        "unidade",
+        "matricula",
+        "nivel",
+        "programa",
+        "situacao",
+        "orientador",
+        "data_emissao",
+        "codigo_autenticidade",
+        "validade_codigo"
+      ],
+      "additionalProperties": false
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "enum": [
+              "aluno",
+              "instituicao",
+              "unidade",
+              "matricula",
+              "nivel",
+              "programa",
+              "situacao",
+              "orientador",
+              "data_emissao",
+              "codigo_autenticidade",
+              "validade_codigo"
+            ]
+          },
+          "quote": {
+            "type": "string",
+            "minLength": 1
+          },
+          "page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          }
+        },
+        "required": [
+          "field",
+          "quote",
+          "page"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "data",
+    "sources",
+    "warnings"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FAI: comprovante_matricula"
+}

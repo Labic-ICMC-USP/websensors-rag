@@ -201,3 +201,28 @@ api:
 ```
 
 `indexing_workers` controla quantas indexações podem executar em paralelo dentro do processo da API.
+
+
+## Segredos por variável de ambiente
+
+O loader aceita valores YAML inteiros no formato `${VAR}`. Para configurações
+em `config/`, lê o `.env` da raiz do projeto; em outros diretórios, lê o `.env`
+adjacente. Variáveis do processo têm prioridade. Ausência de uma variável
+referenciada interrompe o carregamento, sem fallback para outro provedor.
+O conteúdo de `.env` não é executado nem exportado para o processo.
+
+```yaml
+services:
+  embeddings:
+    endpoint: "https://openrouter.ai/api/v1"
+    path: /embeddings
+    models_path: /embeddings/models
+    api_key: "${OPENROUTER_API_KEY}"
+    model: baai/bge-m3
+    dimensions: 1024
+```
+
+O catálogo padrão continua `/models`; `models_path` só precisa ser alterado para
+provedores que usam outra rota. Consulte os guias de
+[OpenRouter](../resources/10_openrouter.md) e [MLflow](../resources/09_mlflow.md)
+para a configuração validada nesta máquina.

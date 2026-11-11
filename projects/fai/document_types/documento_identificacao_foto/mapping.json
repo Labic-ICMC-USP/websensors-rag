@@ -1,0 +1,82 @@
+{
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "document_id": {
+        "type": "keyword"
+      },
+      "revision_id": {
+        "type": "keyword"
+      },
+      "document_type": {
+        "type": "keyword"
+      },
+      "filename": {
+        "type": "keyword"
+      },
+      "extraction_version": {
+        "type": "keyword"
+      },
+      "schema_version": {
+        "type": "keyword"
+      },
+      "active": {
+        "type": "boolean"
+      },
+      "data": {
+        "type": "object",
+        "dynamic": "strict",
+        "properties": {
+          "nome": {
+            "type": "text"
+          },
+          "tipo_identificacao": {
+            "type": "text"
+          },
+          "rg": {
+            "type": "text"
+          },
+          "orgao_emissor": {
+            "type": "text"
+          },
+          "cpf": {
+            "type": "text"
+          },
+          "data_nascimento": {
+            "type": "text"
+          },
+          "registro": {
+            "type": "text"
+          },
+          "categoria": {
+            "type": "text"
+          },
+          "validade": {
+            "type": "text"
+          },
+          "data_emissao": {
+            "type": "text"
+          },
+          "local_emissao": {
+            "type": "text"
+          },
+          "filiacao": {
+            "type": "text"
+          }
+        }
+      },
+      "source": {
+        "type": "object",
+        "dynamic": "strict",
+        "properties": {
+          "bucket": {
+            "type": "keyword"
+          },
+          "key": {
+            "type": "keyword"
+          }
+        }
+      }
+    }
+  }
+}

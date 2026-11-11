@@ -1,0 +1,67 @@
+{
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "document_id": {
+        "type": "keyword"
+      },
+      "revision_id": {
+        "type": "keyword"
+      },
+      "document_type": {
+        "type": "keyword"
+      },
+      "filename": {
+        "type": "keyword"
+      },
+      "extraction_version": {
+        "type": "keyword"
+      },
+      "schema_version": {
+        "type": "keyword"
+      },
+      "active": {
+        "type": "boolean"
+      },
+      "data": {
+        "type": "object",
+        "dynamic": "strict",
+        "properties": {
+          "declarante": {
+            "type": "text"
+          },
+          "local": {
+            "type": "text"
+          },
+          "modalidade": {
+            "type": "text"
+          },
+          "processo_seletivo": {
+            "type": "text"
+          },
+          "data": {
+            "type": "text"
+          },
+          "carga_horaria_semanal": {
+            "type": "double"
+          },
+          "restricoes_horario": {
+            "type": "text"
+          }
+        }
+      },
+      "source": {
+        "type": "object",
+        "dynamic": "strict",
+        "properties": {
+          "bucket": {
+            "type": "keyword"
+          },
+          "key": {
+            "type": "keyword"
+          }
+        }
+      }
+    }
+  }
+}

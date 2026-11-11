@@ -10,7 +10,31 @@ class APIModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class DoclingArtifacts(APIModel):
+    source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    options_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    markdown: str = Field(min_length=1)
+    structural_json: dict[str, Any]
+
+    @field_validator("markdown")
+    @classmethod
+    def nonblank_markdown(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Markdown vazio.")
+        return value
+
+    @field_validator("structural_json")
+    @classmethod
+    def require_docling_document(cls, value: dict[str, Any]) -> dict[str, Any]:
+        if value.get("schema_name") != "DoclingDocument" or not isinstance(value.get("pages"), dict):
+            raise ValueError("JSON estrutural Docling inválido.")
+        return value
+
+
 class IndexDocumentRequest(APIModel):
+    project: str | None = Field(default=None, pattern=r"^[a-z0-9][a-z0-9_-]{0,63}$")
+    document_type: str | None = Field(default=None, pattern=r"^[a-z][a-z0-9_]{0,63}$")
+    docling_artifacts: DoclingArtifacts | None = Field(default=None, exclude=True, repr=False)
     bucket: str | None = Field(default=None, description="Bucket de origem. Quando omitido, usa o bucket bronze configurado.")
     key: str = Field(min_length=1, description="Chave do objeto no MinIO.")
     document_id: str | None = Field(default=None, description="Identificador estável do documento. Quando omitido, é derivado do bucket e da chave.")
@@ -25,6 +49,10 @@ class IndexStartResponse(APIModel):
     document_id: str | None = None
     message: str
     status_url: str
+
+
+class ProcessStartResponse(IndexStartResponse):
+    job_id: str
 
 
 class RunStatusResponse(APIModel):
@@ -119,6 +147,10 @@ class WorkItem:
     existing_document: dict[str, Any] | None = None
     noop: bool = False
     metadata_only: bool = False
+    classification: dict[str, Any] | None = None
+    classification_metadata: dict[str, Any] = field(default_factory=dict)
+    extraction: dict[str, Any] | None = None
+    extraction_metadata: dict[str, Any] = field(default_factory=dict)
     markdown: str = ""
     docling_json: dict[str, Any] = field(default_factory=dict)
     docling_metadata: dict[str, Any] = field(default_factory=dict)

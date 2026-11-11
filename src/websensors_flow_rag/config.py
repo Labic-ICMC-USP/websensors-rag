@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import os
+import re
 from pathlib import Path
 from typing import Any, Literal
 
 import yaml
+from dotenv import dotenv_values
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 from websensors_flow.config import (
@@ -155,6 +158,7 @@ class DoclingSettings(StrictModel):
 class EmbeddingSettings(StrictModel):
     endpoint: str
     path: str = "/embeddings"
+    models_path: str = "/models"
     api_key: str | None = None
     model: str
     dimensions: int = Field(gt=0)
@@ -163,7 +167,32 @@ class EmbeddingSettings(StrictModel):
     truncate_prompt_tokens: int | None = Field(default=None, ge=1)
 
 
+class LLMSettings(StrictModel):
+    endpoint: str = "https://openrouter.ai/api/v1"
+    model: str = Field(min_length=1)
+    api_key: str = Field(min_length=1, repr=False)
+    timeout_seconds: float = Field(default=120, gt=0)
+    temperature: float = Field(default=0, ge=0, le=2)
+    max_tokens: int = Field(default=2048, ge=128)
+    retries: int = Field(default=2, ge=0, le=5)
+    structured_output: bool = True
+
+
+class ClassificationSettings(StrictModel):
+    enabled: bool = False
+    projects_dir: str = "projects"
+    max_input_chars: int = Field(default=100000, ge=1)
+
+
+class ExtractionSettings(StrictModel):
+    enabled: bool = False
+    structured_output: bool | None = None
+    max_input_chars: int = Field(default=100000, ge=1)
+    max_output_tokens: int = Field(default=4096, ge=128)
+
+
 class ServicesSettings(StrictModel):
+    llm: LLMSettings | None = None
     minio: MinIOSettings
     elasticsearch: ElasticsearchSettings
     docling: DoclingSettings
@@ -245,6 +274,7 @@ class APISettings(StrictModel):
     host: str = "0.0.0.0"
     port: int = Field(default=8000, ge=1, le=65535)
     indexing_workers: int = Field(default=4, ge=1, le=64)
+    max_upload_bytes: int = Field(default=50 * 1024 * 1024, ge=1)
     event_history_limit: int = Field(default=1000, ge=10)
     cors_origins: list[str] = Field(default_factory=list)
     auth: APIAuthSettings = Field(default_factory=APIAuthSettings)
@@ -266,6 +296,8 @@ class RAGSettings(StrictModel):
     runtime: RuntimeSettings = Field(default_factory=RuntimeSettings)
     observability: ObservabilitySettings = Field(default_factory=ObservabilitySettings)
     services: ServicesSettings
+    classification: ClassificationSettings = Field(default_factory=ClassificationSettings)
+    extraction: ExtractionSettings = Field(default_factory=ExtractionSettings)
     indexing: IndexingSettings = Field(default_factory=IndexingSettings)
     startup: StartupSettings = Field(default_factory=StartupSettings)
     search: SearchSettings = Field(default_factory=SearchSettings)
@@ -290,6 +322,16 @@ class RAGSettings(StrictModel):
             StepDefinition(name="validar_revisao", class_path="websensors_flow_rag.indexing.steps.ValidateRevisionStep"),
             StepDefinition(name="publicar_revisao", class_path="websensors_flow_rag.indexing.steps.PublishRevisionStep"),
         ]
+
+        if self.classification.enabled:
+            if self.services.llm is None:
+                raise ConfigurationError("Classificação habilitada exige services.llm.")
+            steps.insert(3, StepDefinition(name="classificar_documento", class_path="websensors_flow_rag.classification.steps.ClassifyDocumentTypeStep"))
+
+        if self.extraction.enabled:
+            if not self.classification.enabled or self.services.llm is None:
+                raise ConfigurationError("Extração exige classificação habilitada e services.llm.")
+            steps.insert(4, StepDefinition(name="extrair_dados_estruturados", class_path="websensors_flow_rag.extraction.steps.ExtractStructuredDataStep"))
 
         mlflow = self.observability.mlflow
         graylog = self.observability.graylog
@@ -355,12 +397,33 @@ class RAGSettings(StrictModel):
         )
 
 
-def load_rag_settings(path: str | Path) -> RAGSettings:
+def _resolve_environment_values(value: Any, variables: dict[str, Any]) -> Any:
+    if isinstance(value, dict):
+        return {key: _resolve_environment_values(item, variables) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_resolve_environment_values(item, variables) for item in value]
+    match = re.fullmatch(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}", value) if isinstance(value, str) else None
+    if match:
+        name = match.group(1)
+        resolved = variables.get(name)
+        if not resolved:
+            raise ConfigurationError(f"Variável de ambiente obrigatória ausente: {name}")
+        return resolved
+    return value
+
+
+def load_rag_settings(path: str | Path, *, env_file: str | Path | None = None) -> RAGSettings:
     path = Path(path).resolve()
     if not path.exists():
         raise ConfigurationError(f"Arquivo de configuração não encontrado: {path}")
     try:
         raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        # YAMLs em config/ usam o .env da raiz; outros usam o .env adjacente.
+        default_env = (path.parent.parent if path.parent.name == "config" else path.parent) / ".env"
+        selected_env = Path(env_file).resolve() if env_file is not None else default_env
+        file_values = dotenv_values(selected_env, interpolate=False) if selected_env.is_file() else {}
+        variables = {**file_values, **os.environ}
+        raw = _resolve_environment_values(raw, variables)
         raw["source_path"] = str(path)
         return RAGSettings.model_validate(raw)
     except (yaml.YAMLError, ValidationError) as exc:

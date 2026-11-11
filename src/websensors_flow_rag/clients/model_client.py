@@ -24,7 +24,7 @@ class EmbeddingClient:
     def ping(self) -> bool:
         try:
             endpoint = self.settings.endpoint.rstrip("/")
-            response = self.client.get(f"{endpoint}/models")
+            response = self.client.get(f"{endpoint}/{self.settings.models_path.lstrip('/')}")
             return 200 <= response.status_code < 300
         except httpx.HTTPError:
             return False

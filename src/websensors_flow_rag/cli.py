@@ -16,10 +16,10 @@ from websensors_flow_rag.startup_report import render_startup_error, run_health_
 logger = logging.getLogger("websensors_flow_rag.cli")
 
 
-def configure_logging() -> None:
+def configure_logging(*, stream=None) -> None:
     logging.basicConfig(
         level=logging.INFO,
-        stream=sys.stdout,
+        stream=stream or sys.stdout,
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
         force=True,
     )
@@ -140,3 +140,58 @@ def main_health() -> None:
     args = parser.parse_args()
     configure_logging()
     _require_health(_load_settings(args.config))
+
+
+def main_process(argv: list[str] | None = None) -> None:
+    """Processar arquivo local pelo mesmo serviço usado pela API."""
+    from contextlib import redirect_stdout
+    from pathlib import Path
+    from websensors_flow_rag.models import DoclingArtifacts
+    from websensors_flow_rag.services.process_document import ProcessDocumentService
+
+    parser = argparse.ArgumentParser(description="Processamento documental WebSensors-RAG")
+    parser.add_argument("--config", required=True)
+    parser.add_argument("--file", required=True)
+    parser.add_argument("--project", required=True)
+    parser.add_argument("--metadata", default="{}")
+    parser.add_argument("--document-id")
+    parser.add_argument("--document-type")
+    parser.add_argument("--docling-artifacts", help="JSON contendo artefatos Docling e hashes de proveniência")
+    parser.add_argument("--force", action="store_true")
+    parser.add_argument("--output", choices=["json"], default="json")
+    parser.add_argument("--output-file")
+    args = parser.parse_args(argv)
+    configure_logging(stream=sys.stderr)
+    try:
+        source = Path(args.file)
+        settings = _load_settings(args.config)
+        if source.stat().st_size > settings.api.max_upload_bytes:
+            raise ValueError("Arquivo excede o limite de upload configurado.")
+        content = source.read_bytes()
+        metadata = json.loads(args.metadata)
+        if not isinstance(metadata, dict):
+            raise ValueError("Metadados devem ser um objeto JSON.")
+        artifacts = DoclingArtifacts.model_validate_json(Path(args.docling_artifacts).read_text()) if args.docling_artifacts else None
+        service = ProcessDocumentService(settings)
+        try:
+            with redirect_stdout(sys.stderr):
+                result = service.process_file(
+                    filename=source.name, content=content, project=args.project,
+                    metadata=metadata, document_id=args.document_id,
+                    document_type=args.document_type, artifacts=artifacts, force=args.force,
+                )
+        finally:
+            service.close()
+        if result.report.status != "success":
+            print("Processamento falhou. Consulte o relatório da execução.", file=sys.stderr)
+            raise SystemExit(1)
+        output = json.dumps(result.output, ensure_ascii=False, indent=2)
+        if args.output_file:
+            Path(args.output_file).write_text(output + "\n", encoding="utf-8")
+        print(output)
+    except (OSError, ValueError) as exc:
+        print(f"Entrada inválida: {type(exc).__name__}. Verifique arquivo e parâmetros.", file=sys.stderr)
+        raise SystemExit(2) from None
+    except Exception as exc:
+        print(f"Falha de processamento: {type(exc).__name__}. Consulte os logs.", file=sys.stderr)
+        raise SystemExit(1) from None

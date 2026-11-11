@@ -1,29 +1,26 @@
 from __future__ import annotations
 
-import hashlib
 import logging
 from time import perf_counter
-import uuid
-from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
-from threading import Lock
 from typing import Any
 
 import httpx
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, status
+import json
+
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile, status
+from pydantic import ValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
+from urllib.parse import unquote
 
-from websensors_flow.api import JobStatusObserver, JobStore
-from websensors_flow.runner import run_configured_flow
-from websensors_flow_rag.clients.docling_client import DoclingClient
 from websensors_flow_rag.clients.elasticsearch_client import ElasticsearchClient
-from websensors_flow_rag.clients.minio_client import MinIOClient
-from websensors_flow_rag.clients.model_client import EmbeddingClient
-from websensors_flow_rag.healthchecks import HealthChecker, StartupHealthError
+from websensors_flow_rag.healthchecks import HealthChecker
 from websensors_flow_rag.config import RAGSettings
 from websensors_flow_rag.models import (
+    DoclingArtifacts,
+    ProcessStartResponse,
     HealthResponse,
     IndexDocumentRequest,
     IndexStartResponse,
@@ -32,6 +29,7 @@ from websensors_flow_rag.models import (
     SearchResponse,
     ServiceDescriptor,
 )
+from websensors_flow_rag.services.process_document import ArtifactsUnavailable, ProcessDocumentService
 from websensors_flow_rag.telemetry import record_search
 from websensors_flow_rag.search.service import SearchService
 from websensors_flow_rag.utils import public_service_metadata, stable_document_id
@@ -82,11 +80,9 @@ def _project_status(job: dict[str, Any]) -> dict[str, Any]:
 
 
 def create_rag_app(settings: RAGSettings, *, startup_prepared: bool = False) -> FastAPI:
-    store = JobStore(event_history_limit=settings.api.event_history_limit)
-    executor = ThreadPoolExecutor(max_workers=settings.api.indexing_workers, thread_name_prefix="websensors-rag")
-    document_locks = [Lock() for _ in range(256)]
-    flow_settings = settings.to_flow_settings()
-    steps_total = len(flow_settings.steps)
+    service = ProcessDocumentService(settings)
+    store = service.store
+    executor = service.executor
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -105,7 +101,7 @@ def create_rag_app(settings: RAGSettings, *, startup_prepared: bool = False) -> 
             logger.info("API disponível. Rotas /docs, /openapi.json e /health")
             yield
         finally:
-            executor.shutdown(wait=False, cancel_futures=False)
+            service.close(wait=False)
 
     app = FastAPI(
         title=settings.api.title,
@@ -132,6 +128,7 @@ def create_rag_app(settings: RAGSettings, *, startup_prepared: bool = False) -> 
     app.state.job_store = store
     app.state.executor = executor
     app.state.rag_settings = settings
+    app.state.process_document_service = service
 
     def require_auth(authorization: str | None = Header(default=None)) -> None:
         if not settings.api.auth.enabled:
@@ -139,46 +136,6 @@ def create_rag_app(settings: RAGSettings, *, startup_prepared: bool = False) -> 
         expected = f"Bearer {settings.api.auth.token}"
         if authorization != expected:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token de acesso inválido.")
-
-    def execute_indexing(token: str, request: IndexDocumentRequest) -> None:
-        bucket = request.bucket or settings.services.minio.bronze_bucket
-        document_id = request.document_id or stable_document_id(bucket, request.key)
-        lock_index = int(hashlib.sha256(document_id.encode("utf-8")).hexdigest()[:8], 16) % len(document_locks)
-        with document_locks[lock_index]:
-            logger.info("Indexação iniciada. Token %s Documento %s Objeto %s/%s ETA calculando", token, document_id, bucket, request.key)
-            started = perf_counter()
-            store.update(token, status="running", started_at=datetime.now(timezone.utc).isoformat())
-            observer = JobStatusObserver(store, token)
-            try:
-                result = run_configured_flow(
-                    flow_settings,
-                    input=request,
-                    run_id=token,
-                    extra_observers=[observer],
-                )
-                update: dict[str, Any] = {
-                    "status": result.report.status,
-                    "report": result.report.model_dump(mode="json"),
-                    "finished_at": datetime.now(timezone.utc).isoformat(),
-                }
-                if result.failure is not None:
-                    update["failure"] = result.failure.model_dump(mode="json")
-                if result.report.status == "success" and isinstance(result.output, dict):
-                    update["output"] = result.output
-                store.update(token, **update)
-                logger.info("Indexação finalizada. Token %s Estado %s Duração %.2fs ETA 0s", token, result.report.status, perf_counter() - started)
-            except Exception as exc:
-                logger.error("Erro na indexação. Token %s Documento %s Tipo %s Motivo %s Duração %.2fs", token, document_id, type(exc).__name__, str(exc), perf_counter() - started)
-                store.update(
-                    token,
-                    status="failed",
-                    finished_at=datetime.now(timezone.utc).isoformat(),
-                    failure={
-                        "error_type": type(exc).__name__,
-                        "error_message": str(exc),
-                        "suggestion": "Consulte os logs e o relatório da execução.",
-                    },
-                )
 
     @app.get(
         "/rag",
@@ -201,7 +158,10 @@ def create_rag_app(settings: RAGSettings, *, startup_prepared: bool = False) -> 
             },
             "indexing": {
                 "docling_centralizado": True,
-                "saida": ["markdown", "json"],
+                "steps": [step.name for step in settings.to_flow_settings().steps],
+                "classification": {"enabled": settings.classification.enabled, "model": settings.services.llm.model if settings.classification.enabled and settings.services.llm else None},
+                "extraction": {"enabled": settings.extraction.enabled},
+                "saida": ["markdown", "json"] + (["classification"] if settings.classification.enabled else []) + (["extraction"] if settings.extraction.enabled else []),
                 "chunking": settings.indexing.chunking.model_dump(mode="json"),
             },
             "search": {
@@ -241,9 +201,7 @@ def create_rag_app(settings: RAGSettings, *, startup_prepared: bool = False) -> 
     def index_document(request: IndexDocumentRequest, _: None = Depends(require_auth)) -> dict[str, Any]:
         bucket = request.bucket or settings.services.minio.bronze_bucket
         document_id = request.document_id or stable_document_id(bucket, request.key)
-        token = uuid.uuid4().hex
-        store.create(token, payload=request.model_dump(mode="json"), steps_total=steps_total)
-        executor.submit(execute_indexing, token, request)
+        token = service.submit(request)
         return {
             "token": token,
             "status": "queued",
@@ -265,6 +223,85 @@ def create_rag_app(settings: RAGSettings, *, startup_prepared: bool = False) -> 
         if job is None:
             raise HTTPException(status_code=404, detail="Token de indexação não encontrado.")
         return _project_status(job)
+
+    @app.post(
+        "/api/v1/documents/process", tags=["documentos"], status_code=202,
+        operation_id="processar_documento", response_model=ProcessStartResponse,
+        summary="Receber original e iniciar processamento documental",
+    )
+    def process_document(
+        file: UploadFile = File(...), project: str = Form(...),
+        metadata: str = Form("{}"), document_type: str | None = Form(None),
+        document_id: str | None = Form(None), artifacts: str | None = Form(None),
+        force: bool = Form(False), require_cached_artifacts: bool = Form(False),
+        _: None = Depends(require_auth),
+    ) -> dict[str, Any]:
+        content = file.file.read(settings.api.max_upload_bytes + 1)
+        if len(content) > settings.api.max_upload_bytes:
+            raise HTTPException(status_code=413, detail="Arquivo excede o limite de upload.")
+        try:
+            values = json.loads(metadata)
+            if not isinstance(values, dict):
+                raise ValueError("Metadados devem ser um objeto JSON.")
+            supplied = DoclingArtifacts.model_validate_json(artifacts) if artifacts is not None else None
+            request = service.prepare_upload(
+                filename=file.filename or "", content=content, project=project,
+                metadata=values, document_id=document_id, document_type=document_type,
+                artifacts=supplied, force=force, require_cached_artifacts=require_cached_artifacts,
+            )
+        except ArtifactsUnavailable as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except ValidationError as exc:
+            raise HTTPException(status_code=422, detail=exc.errors(include_input=False, include_context=False)) from exc
+        except (ValueError, json.JSONDecodeError) as exc:
+            # Não devolver conteúdo inválido, textos ou credenciais na resposta.
+            detail = "JSON inválido nos campos enviados." if isinstance(exc, json.JSONDecodeError) else str(exc)
+            raise HTTPException(status_code=400, detail=detail) from exc
+        except Exception as exc:
+            logger.error("Falha ao preservar original no Bronze: %s", type(exc).__name__)
+            raise HTTPException(status_code=502, detail="Não foi possível preservar o original no Bronze.") from exc
+        token = service.submit(request)
+        return {
+            "token": token, "job_id": token, "status": "queued", "terminal": False,
+            "document_id": request.document_id, "message": "Original preservado no Bronze; processamento aceito.",
+            "status_url": f"/api/v1/jobs/{token}",
+        }
+
+    @app.get(
+        "/api/v1/jobs/{job_id}", tags=["documentos"], operation_id="consultar_processamento_documental",
+        response_model=RunStatusResponse, summary="Consultar processamento documental",
+    )
+    def get_document_job(job_id: str, _: None = Depends(require_auth)) -> dict[str, Any]:
+        job = store.get(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="Processamento não encontrado.")
+        return _project_status(job)
+
+    @app.put(
+        "/api/v1/openwebui/process", tags=["documentos"], operation_id="extrair_anexo_openwebui",
+        summary="Extrator externo OpenWebUI: preservar original e converter uma vez",
+    )
+    async def extract_openwebui_attachment(
+        request: Request, x_rag_project: str = Header(...),
+        x_original_filename: str = Header(...), _: None = Depends(require_auth),
+    ) -> dict[str, Any]:
+        if not settings.api.auth.enabled:
+            raise HTTPException(status_code=503, detail="Habilite autenticação da API antes de integrar o extrator externo.")
+        content = bytearray()
+        async for chunk in request.stream():
+            if len(content) + len(chunk) > settings.api.max_upload_bytes:
+                raise HTTPException(status_code=413, detail="Arquivo excede o limite de upload.")
+            content.extend(chunk)
+        try:
+            return await run_in_threadpool(
+                service.convert_for_openwebui, filename=unquote(x_original_filename),
+                content=bytes(content), project=x_rag_project,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except Exception as exc:
+            logger.error("Falha no extrator externo: %s", type(exc).__name__)
+            raise HTTPException(status_code=502, detail="Falha na conversão; consulte o relatório da execução.") from exc
 
     def perform_search(mode: str, request: SearchRequest) -> SearchResponse:
         service = SearchService(settings)

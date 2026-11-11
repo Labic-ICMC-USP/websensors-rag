@@ -1,0 +1,24 @@
+[Unit]
+Description=MLflow tracking for WebSensors-RAG
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.local/share/websensors-rag/mlflow
+ExecStart=%h/.local/share/websensors-rag/mlflow/venv/bin/mlflow server --host 127.0.0.1 --port 5000 --workers 1 --backend-store-uri sqlite:///%h/.local/share/websensors-rag/mlflow/mlflow.db --serve-artifacts --artifacts-destination %h/.local/share/websensors-rag/mlflow/artifacts --allowed-hosts 127.0.0.1:*,localhost:*
+Restart=on-failure
+RestartSec=5
+Nice=10
+CPUQuota=100%
+MemoryHigh=1536M
+MemoryMax=2G
+TasksMax=128
+UMask=0077
+Environment=OMP_NUM_THREADS=1
+Environment=OPENBLAS_NUM_THREADS=1
+Environment=MKL_NUM_THREADS=1
+Environment=MLFLOW_ENABLE_SYSTEM_METRICS_LOGGING=false
+Environment=MLFLOW_SERVER_ENABLE_JOB_EXECUTION=false
+
+[Install]
+WantedBy=default.target
