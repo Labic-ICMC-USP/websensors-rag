@@ -17,7 +17,7 @@ from websensors_flow.runner import run_configured_flow
 from websensors_flow_rag.clients.minio_client import MinIOClient
 from websensors_flow_rag.config import RAGSettings
 from websensors_flow_rag.models import DoclingArtifacts, IndexDocumentRequest
-from websensors_flow_rag.utils import detect_mime_type, docling_options_hash, sha256_bytes, stable_document_id
+from websensors_flow_rag.utils import detect_mime_type, docling_cache_key, docling_options_hash, sha256_bytes, stable_document_id
 
 
 logger = logging.getLogger("websensors_flow_rag.processing")
@@ -81,8 +81,7 @@ class ProcessDocumentService:
         return request
 
     def _cache_key(self, document_id: str, digest: str) -> str:
-        prefix = self.settings.services.minio.silver_prefix.strip("/")
-        return f"{prefix}/{document_id}/conversions/{digest}/{docling_options_hash(self.settings)}/artifacts.json"
+        return docling_cache_key(self.settings, document_id, digest)
 
     def _cached_artifacts(self, client, document_id: str, digest: str) -> DoclingArtifacts | None:
         try:
@@ -110,21 +109,12 @@ class ProcessDocumentService:
             result = run_configured_flow(settings, input=request, run_id=uuid.uuid4().hex)
             if result.report.status != "success":
                 raise RuntimeError("Conversão Docling falhou; consulte o relatório da execução.")
+            # O cache Docling é gravado pelo próprio ConvertDoclingStep.
             work = result.output
-            artifacts = DoclingArtifacts(
-                source_sha256=work.source_sha256, options_sha256=docling_options_hash(self.settings),
-                markdown=work.markdown, structural_json=work.docling_json,
-            )
-            client = MinIOClient(self.settings.services.minio)
-            client.put_text(
-                self.settings.services.minio.silver_bucket,
-                self._cache_key(work.document_id, work.source_sha256),
-                artifacts.model_dump_json(), "application/json; charset=utf-8",
-            )
             return {"page_content": work.markdown, "metadata": {
                 "source": work.filename, "source_sha256": work.source_sha256,
                 "rag_document_id": work.document_id, "rag_project": project,
-                "docling_options_sha256": artifacts.options_sha256,
+                "docling_options_sha256": docling_options_hash(self.settings),
             }}
 
     def run(self, request: IndexDocumentRequest, *, run_id: str | None = None, observers=None):

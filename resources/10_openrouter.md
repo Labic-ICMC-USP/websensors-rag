@@ -68,8 +68,8 @@ acordo com seu uso da API.
 | Etapa | Situação |
 | --- | --- |
 | Embeddings | Qwen3 Embedding 4B testado e configurado no OpenRouter, 2560 dimensões |
-| Classificação documental | Prevista via chat OpenAI-compatible/OpenRouter; ainda não implementada |
-| Extração semântica | Prevista via chat com prompt/schema; ainda não implementada |
+| Classificação documental | `google/gemini-2.5-flash` via OpenRouter ([guia](11_classificacao.md)) |
+| Extração semântica | `google/gemini-2.5-flash` com prompt/schema por tipo ([guia](12_extracao.md)) |
 | Descrição de figuras no Docling | Pode usar API remota OpenAI-compatible; preset existente ainda precisa ser auditado |
 | PDF, layout, tabelas e OCR | Continuam no Docling local no pipeline standard atualmente usado |
 | MinIO, Elasticsearch e MLflow | Permanecem na infraestrutura local |

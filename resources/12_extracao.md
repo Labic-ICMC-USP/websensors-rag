@@ -1,8 +1,8 @@
 # Extração estruturada — Fase D
 
 A configuração local habilita extração por `google/gemini-2.5-flash` via
-OpenRouter, após a classificação e antes do armazenamento Silver. O fluxo
-completo tem onze steps. Docling continua local e seu cache é reutilizado.
+OpenRouter, após a classificação e antes do armazenamento Silver. Com os índices
+estruturados (Fase E) o fluxo completo tem doze steps. Docling continua local e seu cache é reutilizado.
 Embeddings usam o `EmbeddingClient` com Qwen3 Embedding 4B remoto.
 
 ```yaml
@@ -11,6 +11,7 @@ extraction:
   max_input_chars: 100000
   max_output_tokens: 16384
   structured_output: false
+  include_page_furniture: true
 ```
 
 É necessário habilitar `classification` e configurar `services.llm`.
@@ -26,8 +27,8 @@ Indexações sem projeto não executam os novos steps semânticos.
 
 Cada um dos oito tipos em `projects/fai/document_types/` tem `prompt.md`,
 `schema.json` e `mapping.json`. A categoria validada seleciona esses recursos.
-Os mappings estão preparados para a Fase E; ainda não há publicação em índices
-estruturados por tipo.
+Os mappings são usados pela Fase E para publicar índices estruturados por tipo;
+consulte [`13_indices_estruturados.md`](13_indices_estruturados.md).
 
 Schemas usam JSON Schema Draft 2020-12, propriedades explícitas e rejeitam campos
 extras. Campos escalares ausentes são null; listas ausentes são vazias. Datas,
@@ -49,7 +50,10 @@ O resultado tem o seguinte envelope, montado pelo serviço:
 `data` segue o schema específico; o exemplo acima apenas ilustra o envelope.
 Cada fonte identifica campo de primeiro nível, trecho literal e página ou null.
 A validação local confere o trecho no Markdown, tolerando normalização Unicode
-e espaços, e rejeita páginas inexistentes no JSON Docling. Isso não demonstra
+e espaços. Se a comparação estrita falhar, repete ignorando apenas sintaxe
+Markdown (`|` e `---` de tabelas, `#`, marcadores soltos como `a)` ou `-`), que o
+Docling às vezes intercala no meio de frases; as palavras e a ordem continuam
+obrigatórias. Páginas inexistentes no JSON Docling são rejeitadas. Isso não demonstra
 que a evidência sustenta semanticamente cada valor: a Fase G ainda precisa
 comparar os campos com referências humanas.
 
@@ -117,3 +121,12 @@ Execução MLflow: `7d3a3f45cc1e4fe1be4d9f900a09c3e3`, Flow
 Relatório sem valores pessoais: `.local/extraction-validation/curriculo-report.json`.
 A suíte após estes ajustes tem 103 testes aprovados e as mesmas cinco falhas de
 reranking preexistentes. A avaliação humana completa da extração continua na Fase G.
+
+## Cabeçalhos e rodapés
+
+A exportação Markdown do Docling omite itens da camada *furniture*
+(`page_header`/`page_footer`), onde costumam estar códigos de autenticidade,
+validades e emissores. Com `extraction.include_page_furniture: true`, esses textos
+do JSON Docling já armazenado são acrescentados ao final da entrada da extração,
+numa seção própria, e valem como evidência literal. Não há nova conversão. A opção
+entra no `pipeline_hash`; o YAML de exemplo a mantém desabilitada por compatibilidade.

@@ -199,6 +199,45 @@ foi separada da classificação. Guia atualizado em `resources/12_extracao.md`.
 Testes: 103 aprovados e as cinco falhas preexistentes de reranking. Isso não
 substitui a comparação humana completa dos valores prevista para a Fase G.
 
+## Fase E — índices estruturados e publicação consistente
+
+Implementados `structured_index` (opt-in, exige extração), o step
+`StageStructuredRecordStep`, validação do registro na `ValidateRevisionStep` e
+publicação com compensação na `PublishRevisionStep`. Índices por projeto/tipo
+com mapping estrito versionado por hash, alias de leitura, IDs
+`document_id:revision_id`, desativação do registro anterior na troca de tipo e
+restauração da revisão anterior em falha parcial. Guia em
+`resources/13_indices_estruturados.md`.
+
+Testes: 11 novos; suíte com 114 aprovados e as cinco falhas preexistentes de
+reranking. Mappings e cliente validados no Elasticsearch real com índices
+temporários, removidos em seguida. O manifesto Silver passou a registrar
+`document_type` no topo (item 8.1 do plano). Ponta a ponta pela CLI com a ficha:
+publicação estruturada, idempotência (`noop` sem LLM), eventos MLflow sem dados
+pessoais e buscas BM25/semântica/híbrida preservadas; MLflow
+`492b499504f44dd2ba2ff4818a526625`. Detalhes em `resources/13_indices_estruturados.md`.
+
+Organização do checkout em 12/11/2026: os PDFs de validação ficam em
+`validation/data/reais-golo.zip` (ignorado pelo Git; SHA-256 confere com o
+manifesto) e os segredos foram unificados em um único `.env` (antes `.env` +
+`.env.minio`), lido pelo loader, pelo Compose do MinIO e por `minio-init.sh`.
+O `edital.pdf` não está neste checkout.
+
+## Fase G — validação funcional
+
+Classificação sem rótulo dos oito originais: **8/8 (100%)**, critério atingido.
+Extração: sete `success` e o edital `needs_review` por ter sinalizado uma das duas
+inconsistências de datas conhecidas; os cinco valores congelados do edital
+conferem. Ajustes: cabeçalhos/rodapés Docling na entrada da extração, validação de
+evidências tolerante apenas à sintaxe Markdown, orientação de citação em tabelas
+no prompt do edital e gravação do cache Docling pelo step de conversão. Equivalência
+OpenWebUI × CLI comprovada com `disp.pdf` (job `a46dc6ef8bea40998cba0a34aa77adbc`):
+mesma classificação e extração idêntica em execuções independentes, Docling
+reutilizado e registro estruturado publicado (Fase F, Cenários A e B). Pendente:
+conferência humana dos valores. A API deste checkout roda como
+`websensors-rag-api.service` do usuário `utinomatheus` (`scripts/rag-api-install.sh`). Relatório em
+`docs/validacao_fase_g.md`. Testes: 118 aprovados e as cinco falhas preexistentes.
+
 ## Estado e limites da inspeção inicial
 
 Inspeção do código e dos oito PDFs realizada. Os sete rótulos do ZIP foram

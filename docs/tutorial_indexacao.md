@@ -18,6 +18,14 @@ A API devolve um token e executa o processamento de forma assíncrona.
 | 8 | `validar_revisao` | conferir a revisão preparada |
 | 9 | `publicar_revisao` | ativar a nova revisão e atualizar o documento lógico |
 
+Com processamento documental habilitado (`classification`, `extraction` e
+`structured_index` no YAML) e um projeto informado, entram mais três steps,
+totalizando doze: `classificar_documento` e `extrair_dados_estruturados` logo após
+o Docling, e `preparar_registro_estruturado` após os chunks. A validação e a
+publicação passam a incluir o registro no índice do tipo. Para enviar o arquivo
+direto (sem pré-carregar no Bronze), use `POST /api/v1/documents/process` ou a
+[CLI](tutorial_cli.md); veja a [arquitetura](arquitetura.md).
+
 ## Enviar um documento
 
 Considere um arquivo já disponível em `rag-bronze/documentos/manual.pdf`.
@@ -127,11 +135,13 @@ curl -X POST http://localhost:8000/documents/index \
 
 ## Artefatos Silver
 
-A revisão completa grava três objetos.
+A revisão completa grava três objetos; com processamento documental, cinco.
 
 ```text
 document.md
 document.json
+classification.json   # com classificação habilitada
+extraction.json       # com extração habilitada
 manifest.json
 ```
 

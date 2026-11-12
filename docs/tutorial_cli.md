@@ -1,11 +1,11 @@
 # Processamento por CLI
 
-Com `FAI_final` ativo, na raiz do repositório:
+Na raiz do repositório, com o ambiente `.venv` ativo (`source .venv/bin/activate`):
 
 ```bash
 python -m websensors_flow_rag process \
   --config config/rag.local.yaml \
-  --file /exp/golomarcos/edital.pdf \
+  --file validation/data/edital.pdf \
   --project fai \
   --output json \
   --output-file .local/resultado-edital.json
@@ -14,7 +14,8 @@ python -m websensors_flow_rag process \
 Esse comando executa processamento real. Planeje a conversão quando houver
 capacidade no Docling compartilhado. O CLI não inicia nem interrompe esse serviço.
 Ele usa `ProcessDocumentService`, o mesmo núcleo da API: original no Bronze,
-Flow, artefatos Silver, chunks, embeddings configurados e publicação textual.
+Flow, artefatos Silver, chunks, embeddings configurados, publicação textual e,
+com `structured_index` habilitado, o registro no índice do tipo.
 O YAML local habilita MLflow; métricas e eventos usam os observers existentes.
 
 O stdout contém apenas o resultado JSON; logs/progresso seguem para stderr.
@@ -35,6 +36,8 @@ não equivale ao aceite funcional do conjunto completo.
 
 O serviço procura cache Silver compatível com projeto, identidade, hash do
 original e hash das opções Docling. Se encontrado, não repete a conversão.
+Quando a CLI converte, ela própria grava esse cache, então execuções futuras do
+mesmo original (inclusive após mudar prompts ou modelo) não reconvertem.
 Também aceita `--docling-artifacts CAMINHO.json` com:
 
 ```json

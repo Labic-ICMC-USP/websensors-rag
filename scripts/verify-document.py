@@ -82,7 +82,21 @@ def main():
                 'sample_chunk_text_characters': len(sample.get('_source', {}).get('content', ''))},
             'configured_embedding_model': settings.services.embeddings.model,
         }
-        report['ok'] = source_ok and silver_hashes_ok and chunks > 0 and chunks == with_vectors and empty_text == 0 and dimensions == settings.services.embeddings.dimensions
+        structured_ok = True
+        if settings.structured_index.enabled and 'structured' in document:
+            pointer = document.get('structured')
+            info = {'pointer': pointer, 'record_active': None, 'other_active_records': None}
+            project = (document.get('metadata') or {}).get('project')
+            if pointer:
+                record = es.get_structured_record(pointer['index'], pointer['record_id']) or {}
+                info['record_active'] = record.get('active') is True and record.get('revision_id') == document['active_revision']
+                info['populated_fields'] = sum(v not in (None, '', [], {}) for v in (record.get('data') or {}).values())
+            if project:
+                pattern = f"{settings.structured_index.index_prefix}-{project}-*"
+                info['other_active_records'] = es.count_active_structured(pattern, args.document_id, exclude_id=(pointer or {}).get('record_id'))
+            structured_ok = (not pointer or info['record_active']) and info['other_active_records'] in (0, None)
+            report['structured'] = info
+        report['ok'] = structured_ok and source_ok and silver_hashes_ok and chunks > 0 and chunks == with_vectors and empty_text == 0 and dimensions == settings.services.embeddings.dimensions
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0 if report['ok'] else 1
     finally:

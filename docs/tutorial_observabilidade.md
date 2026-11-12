@@ -24,7 +24,7 @@ Quando uma dependência falha, o relatório mostra uma ação específica e a AP
 
 ## Steps no terminal
 
-Cada indexação possui nove steps.
+Cada indexação possui nove steps no fluxo básico e doze com classificação, extração e índices estruturados habilitados.
 
 O início de um step mostra sua posição e o ETA do fluxo.
 

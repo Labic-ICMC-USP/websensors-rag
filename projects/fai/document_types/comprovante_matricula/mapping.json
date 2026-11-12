@@ -73,6 +73,28 @@
             "type": "keyword"
           }
         }
+      },
+      "project": {
+        "type": "keyword"
+      },
+      "status": {
+        "type": "keyword"
+      },
+      "needs_review": {
+        "type": "boolean"
+      },
+      "warnings": {
+        "type": "text"
+      },
+      "sources": {
+        "type": "object",
+        "enabled": false
+      },
+      "created_at": {
+        "type": "date"
+      },
+      "updated_at": {
+        "type": "date"
       }
     }
   }

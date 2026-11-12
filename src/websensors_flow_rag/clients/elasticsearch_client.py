@@ -447,3 +447,71 @@ class ElasticsearchClient:
             f"/{quote(self.settings.aliases.chunks, safe='')}/_search",
             json_body=body,
         ) or {}
+
+    # --- Índices estruturados por tipo documental (Fase E) ---------------------
+
+    def ensure_structured_index(self, index: str, alias: str, definition: dict[str, Any]) -> None:
+        """Cria o índice físico e o inclui no alias do tipo, sem remover índices anteriores.
+
+        Mappings mudam de versão em índices físicos distintos; o alias agrega todos
+        para leitura e aponta a escrita para a versão atual.
+        """
+        self._ensure_index(index, definition)
+        response = self.client.get(f"/_alias/{quote(alias, safe='')}")
+        if response.status_code not in (200, 404):
+            response.raise_for_status()
+        targets = response.json() if response.status_code == 200 else {}
+        current = targets.get(index, {}).get("aliases", {}).get(alias, {}) if isinstance(targets, dict) else {}
+        if index in targets and current.get("is_write_index", False):
+            return
+        actions: list[dict[str, Any]] = [
+            {"add": {"index": other, "alias": alias, "is_write_index": False}}
+            for other in targets if other != index
+        ]
+        actions.append({"add": {"index": index, "alias": alias, "is_write_index": True}})
+        updated = self.client.post("/_aliases", json={"actions": actions})
+        updated.raise_for_status()
+
+    def put_structured_record(self, index: str, record_id: str, record: dict[str, Any]) -> None:
+        response = self.client.put(
+            f"/{quote(index, safe='')}/_doc/{quote(record_id, safe='')}?refresh=wait_for",
+            json=record,
+        )
+        response.raise_for_status()
+
+    def get_structured_record(self, index: str, record_id: str) -> dict[str, Any] | None:
+        response = self._request("GET", f"/{quote(index, safe='')}/_doc/{quote(record_id, safe='')}")
+        if response is None or not response.get("found", True):
+            return None
+        return response.get("_source") or {}
+
+    def set_structured_active(self, index: str, record_id: str, active: bool, updated_at: str) -> bool:
+        """Altera o estado ativo de um registro existente; retorna False se ausente."""
+        response = self.client.post(
+            f"/{quote(index, safe='')}/_update/{quote(record_id, safe='')}?refresh=wait_for",
+            json={"doc": {"active": active, "updated_at": updated_at}},
+        )
+        if response.status_code == 404:
+            return False
+        response.raise_for_status()
+        return True
+
+    def delete_structured_record(self, index: str, record_id: str) -> None:
+        response = self.client.delete(f"/{quote(index, safe='')}/_doc/{quote(record_id, safe='')}?refresh=wait_for")
+        if response.status_code != 404:
+            response.raise_for_status()
+
+    def count_active_structured(self, index_pattern: str, document_id: str, *, exclude_id: str | None = None) -> int:
+        """Conta registros ativos do documento em todos os índices estruturados do padrão."""
+        query: dict[str, Any] = {
+            "bool": {"filter": [{"term": {"document_id": document_id}}, {"term": {"active": True}}]}
+        }
+        if exclude_id is not None:
+            query["bool"]["must_not"] = [{"ids": {"values": [exclude_id]}}]
+        response = self.client.post(
+            f"/{quote(index_pattern, safe='*')}/_count",
+            params={"ignore_unavailable": "true", "allow_no_indices": "true"},
+            json={"query": query},
+        )
+        response.raise_for_status()
+        return int(response.json().get("count", 0))

@@ -1,104 +1,134 @@
 # Arquitetura
 
-## Visão geral
+O WebSensors-RAG recebe documentos por três entradas (OpenWebUI, API e CLI) e
+processa todos com **o mesmo pipeline**. O resultado é o tipo do documento, os
+dados extraídos em JSON e o texto pronto para busca.
 
-```text
-Entrada documental
-       |
-       v
-MinIO Bronze
-       |
-       v
-WebSensors Flow RAG
-       |
-       v
-Docling Serve
-       |
-       +--> Markdown
-       +--> JSON
-       |
-       v
-MinIO Silver
-       |
-       v
-Chunking estrutural
-       |
-       v
-Embeddings
-       |
-       v
-Elasticsearch
-       |
-       +--> BM25
-       +--> kNN
-       +--> RRF
+## 1. Visão geral
+
+```mermaid
+flowchart LR
+    E[OpenWebUI · API · CLI] --> P[[Pipeline do WebSensors-RAG]]
+    P <--> D[Docling<br/>PDF para texto]
+    P <--> L[Gemini e Qwen<br/>via OpenRouter]
+    P --> M[(MinIO<br/>arquivos)]
+    P --> ES[(Elasticsearch<br/>busca e dados)]
+    P -.-> ML[MLflow<br/>monitoramento]
 ```
 
-## MinIO Bronze
+| Componente | Papel |
+| --- | --- |
+| **Docling** (local) | Converte o PDF em texto (Markdown) e estrutura (JSON), inclusive com OCR. |
+| **Gemini** (OpenRouter) | Classifica o tipo do documento e extrai os dados. |
+| **Qwen Embedding** (OpenRouter) | Gera os vetores usados na busca semântica. |
+| **MinIO** | Guarda o PDF original (Bronze) e os resultados (Silver). |
+| **Elasticsearch** | Guarda os trechos para busca e os dados extraídos por tipo. |
+| **MLflow** | Registra cada execução: etapas, tempos e métricas. |
 
-O bucket Bronze mantém o arquivo original. A chave do objeto pode ser usada diretamente pela API de indexação.
+## 2. Fluxo pelo OpenWebUI
 
-## Docling
+O uso pelo chat acontece em **dois momentos**:
 
-Todo processamento documental passa pelo Docling. O mesmo serviço recebe PDF, imagem e demais formatos suportados pela configuração.
+```mermaid
+flowchart LR
+    subgraph P1["① Ao anexar o PDF"]
+        direction TB
+        A1([Usuário anexa o PDF]) --> A2[API RAG guarda o original<br/>no Bronze]
+        A2 --> A3[Docling converte<br/>uma única vez]
+        A3 --> A4[(Conversão guardada<br/>em cache no Silver)]
+        A3 --> A5[Texto vai para o chat]
+    end
 
-O resultado principal contém Markdown e JSON.
+    subgraph P2["② Ao pedir o processamento"]
+        direction TB
+        B1([Usuário pede no chat]) --> B2[Tool envia o PDF original<br/>para a API RAG]
+        B2 --> B3[Pipeline reaproveita a conversão,<br/>classifica e extrai com o Gemini]
+        B3 --> B4[(Resultados no Silver<br/>e no Elasticsearch)]
+        B3 --> B5[Resultado aparece no chat]
+    end
 
-O Markdown é a representação textual canônica para chunking e indexação.
-
-O JSON preserva estrutura documental e metadados derivados.
-
-## MinIO Silver
-
-Cada revisão possui uma pasta própria.
-
-```text
-documentos/
-  DOCUMENT_ID/
-    REVISION_ID/
-      document.md
-      document.json
-      manifest.json
+    A4 -. reaproveitado .-> B3
 ```
 
-## Elasticsearch
+1. **Ao anexar:** o OpenWebUI envia o PDF para a nossa API, que guarda o original e
+   faz a conversão com o Docling. O resultado fica em cache e o texto vai para o chat.
+2. **Ao pedir o processamento:** a Tool busca o PDF original e o envia para a API.
+   O pipeline usa a conversão já feita (o Docling não roda de novo), classifica o
+   documento, extrai os dados, salva tudo e devolve o resultado ao chat.
 
-O índice de documentos armazena uma entrada por documento lógico.
+Pela **CLI** só existe o segundo momento: o comando envia o arquivo direto ao mesmo
+pipeline e, se não houver cache, converte uma vez.
 
-O índice de chunks armazena passagens pesquisáveis e seus vetores.
+## 3. O pipeline
 
-As buscas usam aliases para desacoplar a aplicação dos nomes físicos dos índices.
+```mermaid
+flowchart LR
+    A[1. Ler o original] --> B{2. Mudou algo?}
+    B -->|não| Z([Devolve o resultado já salvo])
+    B -->|sim| C[3. Converter<br/>Docling ou cache]
+    C --> D[4. Classificar<br/>tipo do documento]
+    D --> E[5. Extrair dados<br/>com o schema do tipo]
+    E --> F[6. Salvar no Silver]
+    F --> G[7. Preparar busca<br/>trechos + vetores]
+    G --> H[8. Validar e publicar]
+```
 
-## Revisões
+- **Mudou algo?** Compara o arquivo e a configuração (modelos, prompts, schemas)
+  com o que já foi processado. Se nada mudou, não chama o Docling nem o Gemini.
+- **Classificar:** o Gemini escolhe uma das categorias do projeto (edital, ficha
+  de inscrição, CNH...). Se não reconhecer, usa `outro` e não faz extração.
+- **Extrair:** cada tipo tem seu prompt e seu schema. Todo valor precisa de um
+  trecho do documento como evidência; o modelo não pode inventar dados.
+- **Validar e publicar:** a versão nova só passa a valer depois de conferida. Se
+  algo falhar no meio, a versão anterior continua valendo.
 
-Uma nova revisão é criada quando muda o arquivo de origem, a configuração de processamento ou quando a reindexação é forçada.
+No código, essas 8 etapas correspondem a 12 steps do WebSensors-Flow.
 
-Os novos chunks são gravados como inativos. A publicação ocorre somente depois da validação da revisão.
+## 4. Onde os dados ficam
 
-## Recuperação
+```mermaid
+flowchart LR
+    PDF[PDF enviado] --> BR[(MinIO Bronze<br/>original)]
+    BR --> SI[(MinIO Silver<br/>texto, JSON, tipo,<br/>dados extraídos)]
+    SI --> T[(Elasticsearch<br/>trechos para busca)]
+    SI --> X[(Elasticsearch<br/>dados por tipo)]
+```
 
-BM25 executa a recuperação lexical.
+| Local | Conteúdo |
+| --- | --- |
+| `rag-bronze` | O PDF original, exatamente como foi enviado. |
+| `rag-silver` | Por versão do documento: `document.md`, `document.json`, `classification.json`, `extraction.json` e `manifest.json`; além do cache da conversão do Docling. |
+| `websensors-rag-chunks` | Trechos do texto com vetores, usados nas buscas BM25, semântica e híbrida. |
+| `websensors-rag-documents` | Uma ficha por documento, apontando para a versão ativa. |
+| `rag-estruturado-fai-<tipo>` | Os dados extraídos, um índice por tipo de documento (ex.: `rag-estruturado-fai-edital`). |
 
-kNN utiliza o vetor da consulta para recuperar chunks semanticamente próximos.
+## 5. Versões do documento
 
-RRF combina os dois rankings usando a posição dos candidatos.
+Cada processamento que muda algo cria uma **nova versão** (revisão). Ela é
+montada desativada e só é ativada depois de validada; nesse momento a versão
+anterior é desativada. Se houver erro na troca, o sistema volta para a versão
+anterior. Assim, a busca e os dados por tipo nunca ficam pela metade.
 
-A busca híbrida executa BM25 e kNN no Elasticsearch e combina os dois rankings por RRF na aplicação.
+Mudar o arquivo, o modelo, um prompt ou um schema gera nova versão. A conversão
+do Docling é reaproveitada sempre que o PDF é o mesmo.
 
+## 6. Monitoramento
 
-## Serviço comum de processamento documental
+Cada execução aparece no MLflow (experimento `websensors-flow-rag`) com o tempo de
+cada etapa, os modelos usados e métricas como acerto do JSON, número de campos
+extraídos e conversões do Docling. Textos dos documentos, dados pessoais e chaves
+não são gravados no MLflow.
 
-`ProcessDocumentService` recebe o arquivo original, valida projeto/metadados,
-preserva a fonte no Bronze sob chave com SHA-256 e executa o Flow existente.
-API multipart e CLI usam esse mesmo serviço. Jobs e locks da API estão no
-serviço e continuam em memória, com um processo de API.
+## 7. Onde fica cada coisa no código
 
-O extrator externo OpenWebUI é uma rota da mesma FastAPI. Ele executa um Flow
-curto usando os steps existentes de conversão e Silver. O cache de artefatos
-comprova o hash da fonte e das opções. Ao iniciar o Flow completo pela Tool,
-a etapa Docling reutiliza o par Markdown/JSON e registra zero novas conversões.
-O texto disponibilizado ao modelo pelo OpenWebUI não é tratado como original.
+| Responsabilidade | Local |
+| --- | --- |
+| API (rotas HTTP) | `src/websensors_flow_rag/api.py` |
+| Serviço comum (API e CLI) | `src/websensors_flow_rag/services/process_document.py` |
+| Etapas do pipeline | `src/websensors_flow_rag/indexing/`, `classification/`, `extraction/`, `structured/` |
+| Categorias, prompts e schemas | `projects/<projeto>/` ([como adicionar um tipo](novos_tipos_documentais.md)) |
+| Tool do OpenWebUI | `integrations/openwebui/process_document_tool.py` |
 
-A Tool é um adaptador de entrada/status; não classifica, extrai ou converte por
-conta própria. Os módulos de classificação e extração serão incluídos no núcleo
-nas fases seguintes. Consulte o [tutorial OpenWebUI](tutorial_openwebui.md).
+Mais detalhes: [classificação](../resources/11_classificacao.md),
+[extração](../resources/12_extracao.md) e
+[índices por tipo](../resources/13_indices_estruturados.md).

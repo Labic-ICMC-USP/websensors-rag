@@ -115,3 +115,53 @@ def test_json_mode_receives_output_schema_and_keeps_local_validation():
     assert client.calls[0]['schema'] is None
     payload=json.loads(client.calls[0]['user'])
     assert payload['output_schema']['properties']['data']['required']
+
+
+def test_page_furniture_is_added_to_extraction_input_and_hash():
+    from types import SimpleNamespace as NS
+    from websensors_flow_rag.extraction.steps import extraction_input, page_furniture_text
+    docling = {'texts': [
+        {'label': 'text', 'content_layer': 'body', 'text': 'Corpo'},
+        {'label': 'page_footer', 'content_layer': 'furniture', 'text': 'Código de controle: AB12'},
+        {'label': 'page_footer', 'content_layer': 'furniture', 'text': 'Código de controle: AB12'},
+        {'label': 'page_header', 'content_layer': 'furniture', 'text': 'Universidade'},
+        {'label': 'picture', 'content_layer': 'furniture', 'text': 'logo'},
+    ]}
+    assert page_furniture_text(docling) == 'Código de controle: AB12\nUniversidade'
+    work = NS(markdown='# Declaração\n\nCorpo', docling_json=docling)
+    off = NS(extraction=NS(include_page_furniture=False))
+    on = NS(extraction=NS(include_page_furniture=True))
+    assert extraction_input(work, off) == work.markdown
+    text = extraction_input(work, on)
+    assert text.startswith(work.markdown) and 'Código de controle: AB12' in text and 'logo' not in text
+
+
+def test_furniture_option_changes_pipeline_hash():
+    from websensors_flow_rag.config import load_rag_settings
+    from websensors_flow_rag.utils import pipeline_hash
+    settings = load_rag_settings(Path(__file__).parents[1] / 'config/rag.yaml')
+    settings.classification.enabled = settings.extraction.enabled = True
+    from websensors_flow_rag.config import LLMSettings
+    settings.services.llm = LLMSettings(model='m', api_key='k')
+    before = pipeline_hash(settings)
+    settings.extraction.include_page_furniture = True
+    assert pipeline_hash(settings) != before
+
+
+def test_relaxed_evidence_ignores_markdown_formatting_but_not_words():
+    from websensors_flow_rag.extraction.service import validate_extraction
+    _, schema, _ = load_extraction_resources(ROOT, 'fai', 'edital')
+    markdown = ('São requisitos:\n\na)\n\nEstar matriculado em Sistemas de Informação,\n\nb)\n\n'
+                'Ciência da Computação.\n\n| Critério | Pontuação |\n|---|---|\n| Formação acadêmica | 1,0 ponto |\n')
+    value = answer('edital')
+    value['sources'] = [
+        {'field': 'requisitos_obrigatorios', 'quote': 'Estar matriculado em Sistemas de Informação, Ciência da Computação.', 'page': None},
+        {'field': 'criterios_avaliacao', 'quote': 'Formação acadêmica 1,0 ponto', 'page': None},
+    ]
+    assert validate_extraction(value, schema, markdown, set()) is value
+    value['sources'] = [{'field': 'criterios_avaliacao', 'quote': 'Formação acadêmica 2,0 pontos', 'page': None}]
+    with pytest.raises(ExtractionValidationError):
+        validate_extraction(value, schema, markdown, set())
+    value['sources'] = [{'field': 'requisitos_obrigatorios', 'quote': 'Estar matriculado em Ciência da Computação', 'page': None}]
+    with pytest.raises(ExtractionValidationError):
+        validate_extraction(value, schema, markdown, set())

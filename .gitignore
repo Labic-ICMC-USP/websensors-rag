@@ -65,3 +65,6 @@ temp/
 # MinIO local: licença, cliente e eventuais arquivos de dados
 .local/
 *.license
+
+# Documentos reais de validação (dados pessoais; manter fora do Git)
+validation/data/

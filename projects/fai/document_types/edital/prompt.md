@@ -16,3 +16,4 @@ Retorne apenas o JSON do schema: data, sources e warnings.
 
 Regras específicas deste tipo documental:
 Extraia regras, requisitos e documentos exigidos. Preserve cada etapa do cronograma com suas datas. Separe requisitos obrigatórios dos desejáveis. Preserve divergências entre cronograma e seções textuais, sinalizando-as em warnings; não decida qual data está correta. Não avalie aprovação ou elegibilidade de candidato.
+Em tabelas, cada evidência deve citar o texto de uma única célula (ou de células de uma mesma linha); não junte texto de linhas ou colunas diferentes. Em listas numeradas, cite o texto do item sem incluir marcadores como a), b).

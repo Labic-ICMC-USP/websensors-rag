@@ -3,12 +3,18 @@
 set -euo pipefail
 repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_dir"
-if [[ ! -f .env.minio ]]; then
-  echo 'Crie .env.minio conforme resources/03_minio.md.' >&2
+if [[ ! -f .env ]]; then
+  echo 'Crie .env a partir de .env.example conforme resources/03_minio.md.' >&2
   exit 1
 fi
-# Arquivo local gerado pelo operador; valores devem usar sintaxe de shell.
-source .env.minio
+# Lê somente as chaves MinIO do .env único, sem executá-lo como script.
+env_value() {
+  sed -n "s/^$1=//p" .env | tail -n 1 | sed -e 's/^["'"'"']//' -e 's/["'"'"']$//'
+}
+MINIO_ROOT_USER="$(env_value MINIO_ROOT_USER)"
+MINIO_ROOT_PASSWORD="$(env_value MINIO_ROOT_PASSWORD)"
+RAG_MINIO_ACCESS_KEY="$(env_value RAG_MINIO_ACCESS_KEY)"
+RAG_MINIO_SECRET_KEY="$(env_value RAG_MINIO_SECRET_KEY)"
 : "${MINIO_ROOT_USER:?}" "${MINIO_ROOT_PASSWORD:?}"
 : "${RAG_MINIO_ACCESS_KEY:?}" "${RAG_MINIO_SECRET_KEY:?}"
 for value in "$MINIO_ROOT_PASSWORD" "$RAG_MINIO_SECRET_KEY"; do

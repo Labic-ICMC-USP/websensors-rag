@@ -1,7 +1,7 @@
 # Demonstração FAI — do original aos vetores
 
-Execute as consultas no servidor `chope`, com o ambiente `FAI_final` ativo, a
-partir de `/exp/golomarcos/websensors-rag`. São verificações de leitura: não
+Execute as consultas no servidor `chope`, com o ambiente `.venv` ativo
+(`source .venv/bin/activate`), a partir de `/exp/utinomatheus/websensors-rag`. São verificações de leitura: não
 chamam LLM/Docling, não geram embeddings e não alteram dados.
 
 ## 1. Fluxo no OpenWebUI
@@ -10,7 +10,7 @@ Anexe o currículo e peça o processamento com a Tool habilitada. Aguarde o
 resultado terminal e guarde `document_id`, `revision_id`, `trace_id` e `token`.
 Com a Tool 0.2.1, cada chamada pede uma nova execução semântica. A conversão
 Docling permanece em cache. Só declare a nova revisão concluída se a resposta
-for `status=success` e `action=indexed`.
+for `status=success` e `action=indexed` ou `action=updated`.
 
 ## 2. Conferência integrada no terminal
 
@@ -35,6 +35,7 @@ Explique estes resultados:
 - `embedding_dimensions_sample=2560`: dimensão do vetor realmente recuperado.
 - `embedding_first_four_values`: amostra numérica do vetor, sem imprimir 2560 valores.
 - `sample_chunk_text_characters`: quantidade de caracteres do trecho de exemplo.
+- `structured.record_active=true` e `other_active_records=0`: dados extraídos ativos no índice do tipo, sem duplicata.
 - `ok=true`: todas as verificações acima passaram.
 
 O script lê os cinco artefatos Silver e o original Bronze; não apenas lista nomes.
@@ -50,11 +51,11 @@ Na máquina em que abrirá o navegador, crie o túnel SSH:
 ssh -N \
   -L 15901:127.0.0.1:9001 \
   -L 15000:127.0.0.1:5000 \
-  golomarcos@143.107.183.199
+  <seu-usuario>@143.107.183.199
 ```
 
 Abra `http://127.0.0.1:15901`. Entre com as credenciais MinIO que você configurou
-(`MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` no `.env.minio`). Não são as credenciais
+(`MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` no `.env`). Não são as credenciais
 do OpenWebUI nem a chave OpenRouter.
 
 No Object Browser, mostre:
@@ -139,15 +140,34 @@ O retorno mostra o texto em `_source.content` e os valores do vetor em `fields`.
 A contagem global do índice pode incluir chunks de revisões antigas. Use `active`
 e `revision_id` ao conferir uma publicação específica.
 
+### Índice estruturado do tipo
+
+Os dados extraídos ficam em um índice por tipo (`rag-estruturado-fai-<tipo>`).
+Listagem e registro ativo do currículo:
+
+```bash
+curl --fail -sS 'http://127.0.0.1:9201/_cat/indices/rag-estruturado-fai-*?v'
+
+curl --fail-with-body -sS \
+  'http://127.0.0.1:9201/rag-estruturado-fai-curriculo_lattes/_search?pretty' \
+  -H 'Content-Type: application/json' \
+  -d '{"query":{"bool":{"filter":[{"term":{"document_id":"a4ad7104f6222dc3cd7f4fe5a9ee806e"}},{"term":{"active":true}}]}},"_source":{"excludes":["sources"]}}'
+```
+
+Deve haver exatamente um registro ativo, com o mesmo `revision_id` da revisão
+ativa do documento. O `scripts/verify-document.py` também confere isso no bloco
+`structured`.
+
 ## 5. MLflow e vínculo entre etapas
 
 Com o mesmo túnel, abra `http://127.0.0.1:15000` e selecione o experimento
-`websensors-flow-rag`. Localize a tag `run_id` correspondente ao `trace_id`
-retornado pela Tool. Mostre o estado final, steps, modelos e métricas:
+`websensors-flow-rag`. Localize a tag `run_id` igual ao `token` retornado
+pela Tool. Mostre o estado final, steps, modelos e métricas:
 
 - `classification_success=1` e `extraction_success=1` para execução nova.
 - `extraction_json_valid=1`, número de campos, tentativas/correções e duração.
 - `docling_reused=1`/`docling_conversions=0` quando reutilizou apenas a conversão.
+- `structured_staged=1`, `structured_validated=1` e `structured_published=1`.
 - Etapas de embeddings, validação e publicação concluídas.
 
 As métricas reais têm prefixos dos steps. Valores pessoais extraídos ficam nos
@@ -161,4 +181,5 @@ OpenWebUI → execução Flow/MLflow
 Bronze: original → Silver: conversão + classificação + extração
                  ↓
 Elasticsearch: documento/revisão + chunks ativos + vetores
+               + registro ativo no índice do tipo
 ```

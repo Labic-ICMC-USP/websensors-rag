@@ -1,7 +1,8 @@
 # MinIO para o processamento documental
 
-Execute os comandos abaixo na máquina que hospeda o OpenWebUI, a partir de
-`/exp/golomarcos/websensors-rag`. Este guia prepara apenas o MinIO; Elasticsearch,
+Execute os comandos abaixo na máquina que hospeda o OpenWebUI, a partir da raiz
+do repositório. Nesta máquina o MinIO já está instalado e em uso; este guia serve
+para reinstalação ou outra máquina. Este guia prepara apenas o MinIO; Elasticsearch,
 Docling e embeddings serão verificados separadamente. O pipeline completo ainda
 não deve ser iniciado para validar este passo.
 
@@ -13,7 +14,7 @@ somente em `127.0.0.1`, nas portas 9000 e 9001.
 ## 1. Conferir o Docker Compose
 
 ```bash
-cd /exp/golomarcos/websensors-rag
+cd <raiz-do-repositório>
 sudo docker compose version
 ```
 
@@ -28,10 +29,10 @@ chmod 700 .local .local/minio
 ```
 
 Copie o arquivo recebido para `.local/minio/minio.license`. Por exemplo, se
-você o salvou em `/exp/golomarcos/minio.license`:
+você o salvou em `~/minio.license`:
 
 ```bash
-cp /exp/golomarcos/minio.license .local/minio/minio.license
+cp ~/minio.license .local/minio/minio.license
 chmod 600 .local/minio/minio.license
 test -s .local/minio/minio.license
 ```
@@ -42,8 +43,9 @@ licença como arquivo somente leitura e falha se ela não existir. Licença e
 
 ## 3. Gerar credenciais locais
 
-O comando gera senhas distintas e não as imprime. Se `.env.minio` já existir,
-interrompe sem sobrescrever.
+As credenciais ficam no `.env` único da raiz, junto com `OPENROUTER_API_KEY` e
+`RAG_API_TOKEN`. O comando gera senhas distintas, não as imprime e acrescenta as
+chaves ao `.env`; interrompe se alguma chave MinIO já estiver definida.
 
 ```bash
 python - <<'PY'
@@ -57,31 +59,36 @@ content = (
     'RAG_MINIO_ACCESS_KEY=websensors-rag\n'
     f'RAG_MINIO_SECRET_KEY={secrets.token_hex(32)}\n'
 )
-fd = os.open('.env.minio', os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-with os.fdopen(fd, 'w') as stream:
-    stream.write(content)
-print('Credenciais criadas em .env.minio, com permissão 600.')
+path = '.env'
+existing = open(path).read() if os.path.exists(path) else ''
+if any(line.startswith(('MINIO_ROOT_', 'RAG_MINIO_')) for line in existing.splitlines()):
+    raise SystemExit('Chaves MinIO já existem em .env; nada foi alterado.')
+fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+with os.fdopen(fd, 'a') as stream:
+    stream.write(('\n' if existing and not existing.endswith('\n') else '') + content)
+os.chmod(path, 0o600)
+print('Credenciais acrescentadas ao .env, com permissão 600.')
 PY
 ```
 
-O modelo para edição manual é [`deploy/minio/env.example`](../deploy/minio/env.example).
+O modelo para edição manual é [`.env.example`](../.env.example).
 Use valores em sintaxe de shell; o gerador usa hexadecimal, compatível tanto com
-Compose quanto com o script de inicialização. `.env.minio` não entra no Git.
+Compose quanto com o script de inicialização. `.env` não entra no Git.
 
 ## 4. Iniciar o servidor
 
 ```bash
-sudo docker compose --env-file .env.minio -f compose.minio.yaml config --quiet
-sudo docker compose --env-file .env.minio -f compose.minio.yaml pull
-sudo docker compose --env-file .env.minio -f compose.minio.yaml up -d
-sudo docker compose --env-file .env.minio -f compose.minio.yaml ps
+sudo docker compose -f compose.minio.yaml config --quiet
+sudo docker compose -f compose.minio.yaml pull
+sudo docker compose -f compose.minio.yaml up -d
+sudo docker compose -f compose.minio.yaml ps
 curl --fail --silent --show-error http://127.0.0.1:9000/minio/health/live
 ```
 
 O health check bem-sucedido pode não imprimir corpo. Caso falhe, confira:
 
 ```bash
-sudo docker compose --env-file .env.minio -f compose.minio.yaml logs --tail=80 minio
+sudo docker compose -f compose.minio.yaml logs --tail=80 minio
 ```
 
 A imagem inicial segue `latest`, como no guia oficial. Para reproduzir a versão
@@ -91,7 +98,7 @@ validada, depois do primeiro pull obtenha seu digest:
 sudo docker image inspect quay.io/minio/aistor/minio:latest --format '{{index .RepoDigests 0}}'
 ```
 
-Substitua o valor de `MINIO_IMAGE` em `.env.minio` pela referência completa
+Substitua o valor de `MINIO_IMAGE` em `.env` pela referência completa
 `quay.io/minio/aistor/minio@sha256:...` retornada. Assim, próximos `up`/`pull`
 usam a mesma imagem. Não execute atualizações de versão sem decisão explícita.
 
@@ -145,7 +152,7 @@ services:
   minio:
     endpoint: "http://127.0.0.1:9000"
     access_key: "websensors-rag"
-    secret_key: "COPIE_O_VALOR_DE_RAG_MINIO_SECRET_KEY_DO_ENV_MINIO"
+    secret_key: "${RAG_MINIO_SECRET_KEY}"
     secure: false
     region: null
     bronze_bucket: rag-bronze
@@ -154,9 +161,8 @@ services:
     timeout_seconds: 10
 ```
 
-O RAG agora resolve `${VAR}` pelo `.env` da raiz, mas **não lê `.env.minio`
-automaticamente**. Neste passo, a credencial continua no YAML local, ignorado
-pelo Git; alternativamente, coloque uma variável no `.env` e referencie-a no YAML.
+O RAG resolve valores `${VAR}` pelo `.env` da raiz. Prefira referenciar
+`secret_key: "${RAG_MINIO_SECRET_KEY}"` em vez de copiar o valor para o YAML.
 Não use as credenciais do administrador no RAG. O trecho acima substitui o bloco
 MinIO dentro de `services`; preserve os demais serviços do arquivo.
 
@@ -172,16 +178,16 @@ objetos do passo 5 para validar esta etapa isoladamente.
 ## 7. Abrir o console
 
 Na própria máquina: <http://127.0.0.1:9001>. Entre com `MINIO_ROOT_USER` e
-`MINIO_ROOT_PASSWORD` de `.env.minio`.
+`MINIO_ROOT_PASSWORD` de `.env`.
 
 Para acessar de outro computador, execute **nesse outro computador**:
 
 ```bash
-ssh -N -L 19001:127.0.0.1:9001 golomarcos@143.107.183.199
+ssh -N -L 19001:127.0.0.1:9001 <seu-usuario>@143.107.183.199
 ```
 
-Depois abra <http://127.0.0.1:19001> no navegador desse computador. Use a conta
-SSH que você normalmente utiliza nessa máquina, caso não seja `golomarcos`.
+Depois abra <http://127.0.0.1:19001> no navegador desse computador. Use a sua conta SSH
+nessa máquina.
 
 ## Organização para o planejamento
 
@@ -214,13 +220,13 @@ Os dados ficam no volume nomeado `websensors-rag-minio_minio-data`, fora do
 checkout. Reiniciar ou recriar o contêiner mantém os dados:
 
 ```bash
-sudo docker compose --env-file .env.minio -f compose.minio.yaml restart minio
+sudo docker compose -f compose.minio.yaml restart minio
 ```
 
 Para parar sem remover os dados:
 
 ```bash
-sudo docker compose --env-file .env.minio -f compose.minio.yaml stop minio
+sudo docker compose -f compose.minio.yaml stop minio
 ```
 
 Não use `down -v`: remove o volume e os dados. Volume persistente não substitui

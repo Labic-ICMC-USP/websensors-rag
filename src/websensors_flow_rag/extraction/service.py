@@ -34,6 +34,20 @@ def _normalize(text):
     return ' '.join(unicodedata.normalize('NFC', text).split())
 
 
+_FORMAT_TOKEN = re.compile(r'^(?:#{1,6}|[-*+•]|\*\*|[a-zA-Z]\)|\(?[ivxIVX]{1,4}\))$')
+
+
+def _relaxed(text):
+    """Remove apenas sintaxe Markdown (tabelas, títulos, marcadores soltos de lista).
+
+    O Docling pode intercalar marcadores como ``b)`` no meio de uma frase ou separar
+    células por ``|``; as palavras e sua ordem continuam obrigatórias.
+    """
+    text = unicodedata.normalize('NFC', text).replace('|', ' ')
+    text = re.sub(r'-{3,}', ' ', text).replace('**', ' ')
+    return ' '.join(token for token in text.split() if not _FORMAT_TOKEN.fullmatch(token))
+
+
 def has_value(value):
     if isinstance(value, dict): return any(has_value(v) for v in value.values())
     if isinstance(value, list): return any(has_value(v) for v in value)
@@ -45,10 +59,16 @@ def validate_extraction(data, schema, markdown, valid_pages):
     if error is not None:
         raise ExtractionValidationError(f'Resposta incompatível com schema; regra: {error.validator}.')
     text = _normalize(markdown)
+    relaxed_text = None
     problems = []
     for index, source in enumerate(data['sources']):
         quote = _normalize(source['quote'])
-        if not quote or quote not in text:
+        literal = bool(quote) and quote in text
+        if not literal and quote:
+            relaxed_text = relaxed_text if relaxed_text is not None else _relaxed(markdown)
+            relaxed_quote = _relaxed(source['quote'])
+            literal = bool(relaxed_quote) and relaxed_quote in relaxed_text
+        if not literal:
             problems.append(f"sources[{index}].quote (campo {source['field']}): evidência não corresponde a trecho literal do documento")
         if source['page'] is not None and source['page'] not in valid_pages:
             problems.append(f'sources[{index}].page: página não disponível no documento')

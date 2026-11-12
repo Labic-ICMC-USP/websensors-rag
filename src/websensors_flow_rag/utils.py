@@ -46,6 +46,8 @@ def pipeline_hash(settings: RAGSettings) -> str:
             "config": settings.extraction.model_dump(mode="json"),
             "resources": {str(p.relative_to(root)):sha256_bytes(p.read_bytes()) for p in sorted(root.glob("*/document_types/*/*")) if p.is_file()},
         }
+    if settings.structured_index.enabled:
+        payload["structured_index"] = settings.structured_index.model_dump(mode="json")
     encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
@@ -53,6 +55,12 @@ def pipeline_hash(settings: RAGSettings) -> str:
 def docling_options_hash(settings: RAGSettings) -> str:
     encoded = json.dumps(settings.services.docling.options, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
+
+
+def docling_cache_key(settings: RAGSettings, document_id: str, source_sha256: str) -> str:
+    """Chave Silver do par Markdown/JSON Docling por documento, fonte e opções de conversão."""
+    prefix = settings.services.minio.silver_prefix.strip("/")
+    return f"{prefix}/{document_id}/conversions/{source_sha256}/{docling_options_hash(settings)}/artifacts.json"
 
 
 def revision_id(source_sha256: str, processing_hash: str) -> str:

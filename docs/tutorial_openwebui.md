@@ -54,15 +54,29 @@ systemctl --user status websensors-rag-api --no-pager
 journalctl --user -u websensors-rag-api -n 40 --no-pager
 ```
 
-A unidade específica desta máquina está em
-`deploy/rag/websensors-rag-api.service`. Em outra instalação, ajuste os caminhos
-do checkout e do Python e escolha um endereço interno acessível ao OpenWebUI.
+Para instalar o serviço a partir de qualquer checkout (usa `.venv/` e
+`config/rag.local.yaml` do próprio repositório, com `api.host`/`api.port`):
+
+```bash
+bash scripts/rag-api-install.sh
+loginctl enable-linger "$USER"   # manter ativo após logout
+```
+
+O instalador não para outros processos: se `172.18.0.1:8000` estiver em uso, ele
+interrompe sem alterar nada. Para trocar a API de um checkout por outro na mesma
+porta, o dono do serviço antigo executa antes
+`systemctl --user disable --now websensors-rag-api`. O OpenWebUI (extrator e
+Valves da Tool) não precisa mudar se o endereço e o `RAG_API_TOKEN` forem os mesmos.
+Depois de atualizar o código, aplique com `systemctl --user restart websensors-rag-api`.
+
+`deploy/rag/websensors-rag-api.service` é a unidade original do checkout
+`/exp/golomarcos`, mantida como referência.
 
 ## Configurar o extrator externo
 
-Esta é uma configuração **global** do OpenWebUI e ainda não foi aplicada. Ela
-muda o caminho de extração dos próximos uploads de seus usuários. Registre a
-configuração Docling anterior antes de fazer a troca.
+Esta é uma configuração **global** do OpenWebUI (já aplicada nesta instalação).
+Ela muda o caminho de extração dos uploads de todos os usuários. Em outra
+instalação, registre a configuração Docling anterior antes de fazer a troca.
 
 Em **Painel de administração → Configurações → Documentos**:
 
@@ -122,13 +136,14 @@ aguarde o upload terminar e acione `processar_documento`. Verifique no MLflow:
 2. O fluxo da Tool tem `docling_reused=1` e `docling_conversions=0`.
 3. O resultado textual retorna ao chat com documento/revisão identificados.
 
-Os testes simulados já verificam conversão única, hashes, cache, publicação,
-CLI, API e autorização da Tool. O teste real da ficha pelo chat concluiu os
-nove steps da Fase B com reuso Docling. As Fases C/D habilitaram classificação
-e extração via Gemini 2.5 Flash; o fluxo atual tem onze steps e a Tool retorna
-ambos os resultados. A API atualizada devolveu a extração da ficha em no-op;
-a conferência visual dessa nova resposta no chat ainda pode ser feita. Consulte
-`resources/11_classificacao.md` e `resources/12_extracao.md`.
+Os testes simulados verificam conversão única, hashes, cache, publicação, CLI,
+API e autorização da Tool. Com a configuração atual o fluxo tem doze steps e a
+Tool retorna `classification`, `extraction` e `structured` (índice do tipo).
+
+Em 12/11/2026, `disp.pdf` processado pelo chat (job
+`a46dc6ef8bea40998cba0a34aa77adbc`) teve 0 conversões Docling, a mesma
+classificação da CLI e os 7 campos extraídos idênticos; veja
+[validação](validacao_fase_g.md).
 
 Contrato de referência: [extrator externo oficial](https://docs.openwebui.com/features/chat-conversations/rag/document-extraction/external/)
 e [loader da versão 0.11.0](https://github.com/open-webui/open-webui/blob/v0.11.0/backend/open_webui/retrieval/loaders/external_document.py).
@@ -140,7 +155,7 @@ chamada `processar_documento`, envia `force=true` automaticamente: o usuário
 anexa o arquivo e pede seu processamento normalmente, mesmo que os bytes sejam
 iguais aos de um envio anterior. Isso gera novas chamadas de classificação,
 extração e embeddings e, em caso de sucesso, publica nova revisão com
-`action=indexed`. Cada chamada pode gerar custos no provedor.
+`action=indexed` (primeiro processamento) ou `action=updated`. Cada chamada pode gerar custos no provedor.
 
 O upload isolado prepara a conversão; o fluxo completo começa quando o modelo
 chama a Tool. O cache Docling continua obrigatório, evitando repetir OCR/layout

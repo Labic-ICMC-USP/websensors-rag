@@ -6,7 +6,7 @@ rede. Metadata ficam em SQLite e os artefatos são servidos pelo tracking server
 
 ## Instalar e iniciar
 
-Na raiz do repositório, com o ambiente `FAI_final` ativo:
+Na raiz do repositório, com o ambiente `.venv` ativo:
 
 ```bash
 bash scripts/mlflow-install.sh
@@ -43,7 +43,9 @@ Instale a integração no ambiente utilizado pelo RAG:
 python -m pip install -e '.[observability]' 'mlflow==3.17.2'
 ```
 
-O cliente MLflow 3.17.2 e `psutil` já foram instalados no `FAI_final` desta máquina.
+O cliente MLflow 3.17.2 e `psutil` já estão no `.venv` deste checkout. Nesta máquina,
+o servidor MLflow (`websensors-rag-mlflow.service`) roda como serviço do usuário
+`golomarcos`; os comandos `systemctl --user` abaixo valem para quem o instalou.
 Graylog continua desabilitado; não é necessário subir esse serviço.
 
 ## Configuração local
@@ -105,7 +107,7 @@ Na própria máquina: <http://127.0.0.1:5000>.
 Para abrir a UI de outro computador, execute nesse computador:
 
 ```bash
-ssh -N -L 15000:127.0.0.1:5000 golomarcos@143.107.183.199
+ssh -N -L 15000:127.0.0.1:5000 <seu-usuario>@143.107.183.199
 ```
 
 Abra <http://127.0.0.1:15000>. Os links de execução retornados pelo diagnóstico

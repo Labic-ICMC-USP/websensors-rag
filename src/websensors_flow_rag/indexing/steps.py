@@ -16,6 +16,7 @@ from websensors_flow_rag.models import IndexDocumentRequest, WorkItem
 from websensors_flow_rag.utils import (
     detect_filename,
     detect_mime_type,
+    docling_cache_key,
     docling_options_hash,
     load_context_settings,
     pipeline_hash,
@@ -201,12 +202,14 @@ class ConvertDoclingStep(PipelineStep):
             "timings": converted.get("timings") or {},
             "errors": converted.get("errors") or [],
         }
+        cached = _store_docling_cache(settings, work, context)
         return StepResult(
             output=work,
             has_output=True,
             text="Documento convertido pelo Docling para Markdown e JSON.",
             metrics={
                 "docling_conversions": 1,
+                "docling_cache_stored": cached,
                 "markdown_chars": len(work.markdown),
                 "docling_errors": len(work.docling_metadata["errors"]),
             },
@@ -246,6 +249,7 @@ class StoreSilverStep(PipelineStep):
         bucket = settings.services.minio.silver_bucket
         object_count = 3 + int(work.classification is not None) + int(work.extraction is not None)
         if work.classification is not None:
+            manifest["document_type"] = work.classification.get("document_type")
             classification_key = f"{base}/classification.json"
             manifest["classification"] = {**work.classification_metadata, "artifact": f"s3://{bucket}/{classification_key}"}
         if work.extraction is not None:
@@ -447,8 +451,18 @@ class ValidateRevisionStep(PipelineStep):
             return _skip(work, "Validação de revisão dispensada porque somente os metadados serão atualizados.")
         settings = load_context_settings(context)
         es = ElasticsearchClient(settings.services.elasticsearch, settings.services.embeddings.dimensions)
+        structured_validated = 0
         try:
             count = es.count_revision(work.document_id, work.revision_id, active=False)
+            if work.structured is not None:
+                from websensors_flow_rag.structured.index import structured_target, validate_record
+
+                target = structured_target(settings, work.request.project, work.structured["document_type"])
+                if target["index"] != work.structured["index"]:
+                    raise RuntimeError("Índice estruturado mudou entre preparação e validação.")
+                record = es.get_structured_record(work.structured["index"], work.structured["record_id"])
+                validate_record(record, work.structured, target["data_schema"])
+                structured_validated = 1
         finally:
             es.close()
         expected = len(work.chunks)
@@ -458,7 +472,7 @@ class ValidateRevisionStep(PipelineStep):
             output=work,
             has_output=True,
             text="Revisão validada no Elasticsearch.",
-            metrics={"chunks_validated": count},
+            metrics={"chunks_validated": count, "structured_validated": structured_validated},
         )
 
 
@@ -470,6 +484,8 @@ class PublishRevisionStep(PipelineStep):
                 work.final_result["classification"] = work.classification
             if work.extraction is not None:
                 work.final_result["extraction"] = work.extraction
+            if work.structured is not None:
+                work.final_result["structured"] = _structured_summary(work.structured)
             return StepResult(
                 output=work.final_result,
                 has_output=True,
@@ -509,6 +525,8 @@ class PublishRevisionStep(PipelineStep):
                 work.final_result["classification"] = work.classification
             if work.extraction is not None:
                 work.final_result["extraction"] = work.extraction
+            if work.structured is not None:
+                work.final_result["structured"] = _structured_summary(work.structured)
             return StepResult(
                 output=work.final_result,
                 has_output=True,
@@ -519,39 +537,76 @@ class PublishRevisionStep(PipelineStep):
 
         es = ElasticsearchClient(settings.services.elasticsearch, settings.services.embeddings.dimensions)
         now = datetime.now(timezone.utc).isoformat()
-        previous_created_at = (work.existing_document or {}).get("created_at") or now
+        existing = work.existing_document or {}
+        previous_created_at = existing.get("created_at") or now
+        previous_revision = existing.get("active_revision")
+        previous_structured = existing.get("structured")
+        new_structured = work.structured
+        structured_checks = settings.structured_index.enabled and bool(work.request.project)
+        compensated = 0
         try:
-            es.switch_active_revision(work.document_id, work.revision_id)
-            active_target = es.count_revision(work.document_id, work.revision_id, active=True)
-            active_others = es.count_active_other_revisions(work.document_id, work.revision_id)
-            if active_target != len(work.chunks) or active_others != 0:
-                raise RuntimeError(
-                    "Publicação inconsistente no Elasticsearch. "
-                    f"Revisão alvo ativa: {active_target}/{len(work.chunks)}. "
-                    f"Chunks ativos de outras revisões: {active_others}."
+            try:
+                es.switch_active_revision(work.document_id, work.revision_id)
+                active_target = es.count_revision(work.document_id, work.revision_id, active=True)
+                active_others = es.count_active_other_revisions(work.document_id, work.revision_id)
+                if active_target != len(work.chunks) or active_others != 0:
+                    raise RuntimeError(
+                        "Publicação inconsistente no Elasticsearch. "
+                        f"Revisão alvo ativa: {active_target}/{len(work.chunks)}. "
+                        f"Chunks ativos de outras revisões: {active_others}."
+                    )
+                if new_structured is not None:
+                    if not es.set_structured_active(new_structured["index"], new_structured["record_id"], True, now):
+                        raise RuntimeError("Registro estruturado preparado desapareceu antes da publicação.")
+                if previous_structured and (new_structured is None or previous_structured.get("record_id") != new_structured["record_id"]):
+                    # Troca de tipo, de mapping ou de revisão: desativar o registro anterior.
+                    es.set_structured_active(previous_structured["index"], previous_structured["record_id"], False, now)
+                if structured_checks:
+                    from websensors_flow_rag.structured.index import structured_index_pattern
+
+                    pattern = structured_index_pattern(settings, work.request.project)
+                    exclude = new_structured["record_id"] if new_structured else None
+                    others = es.count_active_structured(pattern, work.document_id, exclude_id=exclude)
+                    if new_structured is not None:
+                        record = es.get_structured_record(new_structured["index"], new_structured["record_id"])
+                        if not record or record.get("active") is not True or record.get("revision_id") != work.revision_id:
+                            raise RuntimeError("Registro estruturado não ficou ativo para a revisão publicada.")
+                    if others:
+                        raise RuntimeError(f"Publicação estruturada inconsistente: {others} registro(s) ativo(s) de outras revisões.")
+                title = work.chunks[0].get("title") if work.chunks else work.filename
+                document = {
+                    "document_id": work.document_id,
+                    "filename": work.filename,
+                    "title": title,
+                    "mime_type": work.mime_type,
+                    "source": {"bucket": work.bucket, "key": work.key, "sha256": work.source_sha256},
+                    "active_revision": work.revision_id,
+                    "pipeline_hash": work.pipeline_hash,
+                    "status": "ready",
+                    "metadata": work.request.metadata,
+                    "silver": work.silver,
+                    "created_at": previous_created_at,
+                    "updated_at": now,
+                }
+                if work.classification is not None:
+                    document["classification"] = work.classification
+                    document["classification_metadata"] = work.classification_metadata
+                if work.extraction is not None:
+                    document["extraction"] = work.extraction
+                    document["extraction_metadata"] = work.extraction_metadata
+                if structured_checks:
+                    document["structured"] = new_structured
+                es.put_document(work.document_id, document)
+            except Exception:
+                # Elasticsearch não tem transação entre índices: restaurar o estado
+                # publicado anteriormente antes de propagar a falha.
+                compensated = 1
+                _compensate_publication(
+                    es, work, previous_revision=previous_revision,
+                    previous_structured=previous_structured, new_structured=new_structured, now=now,
+                    logger=context.logger,
                 )
-            title = work.chunks[0].get("title") if work.chunks else work.filename
-            document = {
-                "document_id": work.document_id,
-                "filename": work.filename,
-                "title": title,
-                "mime_type": work.mime_type,
-                "source": {"bucket": work.bucket, "key": work.key, "sha256": work.source_sha256},
-                "active_revision": work.revision_id,
-                "pipeline_hash": work.pipeline_hash,
-                "status": "ready",
-                "metadata": work.request.metadata,
-                "silver": work.silver,
-                "created_at": previous_created_at,
-                "updated_at": now,
-            }
-            if work.classification is not None:
-                document["classification"] = work.classification
-                document["classification_metadata"] = work.classification_metadata
-            if work.extraction is not None:
-                document["extraction"] = work.extraction
-                document["extraction_metadata"] = work.extraction_metadata
-            es.put_document(work.document_id, document)
+                raise
         finally:
             es.close()
 
@@ -566,13 +621,79 @@ class PublishRevisionStep(PipelineStep):
             work.final_result["classification"] = work.classification
         if work.extraction is not None:
             work.final_result["extraction"] = work.extraction
+        if work.structured is not None:
+            work.final_result["structured"] = _structured_summary(work.structured)
         return StepResult(
             output=work.final_result,
             has_output=True,
             text="Nova revisão publicada para busca.",
-            metrics={"published": 1, "chunks_active": len(work.chunks), "other_active_chunks": 0},
+            metrics={
+                "published": 1, "chunks_active": len(work.chunks), "other_active_chunks": 0,
+                "structured_published": int(work.structured is not None),
+                "publication_compensated": compensated,
+            },
             metadata={"document_id": work.document_id, "revision_id": work.revision_id},
         )
+
+
+def _structured_summary(pointer: dict[str, Any]) -> dict[str, Any]:
+    return {key: pointer.get(key) for key in ("alias", "index", "record_id", "document_type")}
+
+
+def _compensate_publication(es, work, *, previous_revision, previous_structured, new_structured, now, logger) -> None:
+    """Desfaz a ativação parcial; falhas aqui indicam estado que exige intervenção."""
+    errors: list[str] = []
+    try:
+        if previous_revision and previous_revision != work.revision_id and es.count_revision(work.document_id, previous_revision) > 0:
+            es.switch_active_revision(work.document_id, previous_revision)
+        else:
+            # Primeira publicação: nenhuma revisão textual deve ficar ativa.
+            es.switch_active_revision(work.document_id, "")
+    except Exception as exc:  # noqa: BLE001 - registrar e continuar a compensação
+        errors.append(f"textual:{type(exc).__name__}")
+    for pointer, active in ((new_structured, False), (previous_structured, True)):
+        if not pointer:
+            continue
+        if active and new_structured and pointer.get("record_id") == new_structured.get("record_id"):
+            continue
+        try:
+            es.set_structured_active(pointer["index"], pointer["record_id"], active, now)
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"estruturado:{type(exc).__name__}")
+    if errors:
+        logger.error(
+            "Compensação da publicação incompleta; revisar o documento manualmente.",
+            metadata={"document_id": work.document_id, "revision_id": work.revision_id, "falhas": errors},
+        )
+        raise RuntimeError(
+            "Publicação falhou e a compensação ficou incompleta: " + ", ".join(errors)
+        )
+    logger.warning(
+        "Publicação revertida; revisão ativa anterior preservada.",
+        metadata={"document_id": work.document_id, "revision_id": work.revision_id},
+    )
+
+
+def _store_docling_cache(settings, work: WorkItem, context: Any) -> int:
+    """Guarda o par Markdown/JSON para que revisões futuras não reconvertam o original."""
+    if not work.request.project:
+        return 0
+    from websensors_flow_rag.models import DoclingArtifacts
+
+    try:
+        artifacts = DoclingArtifacts(
+            source_sha256=work.source_sha256, options_sha256=docling_options_hash(settings),
+            markdown=work.markdown, structural_json=work.docling_json,
+        )
+    except ValueError:
+        context.logger.warning("Saída Docling sem estrutura completa; cache de conversão não gravado.")
+        return 0
+    MinIOClient(settings.services.minio).put_text(
+        settings.services.minio.silver_bucket,
+        docling_cache_key(settings, work.document_id, work.source_sha256),
+        artifacts.model_dump_json(), "application/json; charset=utf-8",
+    )
+    return 1
 
 
 class PrepareConversionRevisionStep(PipelineStep):

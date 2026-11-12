@@ -9,6 +9,29 @@ from websensors_flow_rag.extraction.service import extract_structured_data
 from websensors_flow_rag.utils import classification_projects_dir, load_context_settings
 
 
+def page_furniture_text(docling_json: dict) -> str:
+    """Cabeçalhos e rodapés que a exportação Markdown do Docling omite (camada furniture).
+
+    Rodapés costumam conter códigos de autenticidade, validades e emissores; sem eles
+    a extração perderia conteúdo silenciosamente.
+    """
+    lines: list[str] = []
+    for item in docling_json.get('texts', []) if isinstance(docling_json, dict) else []:
+        text = (item.get('text') or '').strip()
+        if item.get('content_layer') == 'furniture' and item.get('label') in {'page_header', 'page_footer'} and text and text not in lines:
+            lines.append(text)
+    return '\n'.join(lines)
+
+
+def extraction_input(work, settings) -> str:
+    if not settings.extraction.include_page_furniture:
+        return work.markdown
+    furniture = page_furniture_text(work.docling_json)
+    if not furniture:
+        return work.markdown
+    return f"{work.markdown.rstrip()}\n\n## Cabeçalhos e rodapés do documento (Docling)\n\n{furniture}\n"
+
+
 class ExtractStructuredDataStep(PipelineStep):
     def execute(self, input, context):
         work = input
@@ -29,7 +52,7 @@ class ExtractStructuredDataStep(PipelineStep):
         called = False
         if kind == 'outro':
             result['warnings'] = ['Tipo outro: extração especializada não aplicável.']
-        elif not work.markdown.strip() or len(work.markdown) > settings.extraction.max_input_chars:
+        elif not (text := extraction_input(work, settings)).strip() or len(text) > settings.extraction.max_input_chars:
             result.update(status='needs_review',warnings=['Conteúdo vazio ou acima do limite de extração; revisão necessária, sem truncamento silencioso.'])
             metadata['needs_review'] = True
         else:
@@ -41,7 +64,7 @@ class ExtractStructuredDataStep(PipelineStep):
             pages = {int(key) for key in work.docling_json.get('pages',{}) if str(key).isdigit()}
             try:
                 with context.trace('extracao_estruturada',metadata={'document_type':kind}):
-                    data, metadata = extract_structured_data(client,markdown=work.markdown,document_type=kind,
+                    data, metadata = extract_structured_data(client,markdown=text,document_type=kind,
                         projects_dir=classification_projects_dir(settings),project=work.request.project,
                         valid_pages=pages,structured_output=config.structured_output if settings.extraction.structured_output is None else settings.extraction.structured_output)
             except Exception:

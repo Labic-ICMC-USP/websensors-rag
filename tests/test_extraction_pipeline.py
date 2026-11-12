@@ -42,6 +42,8 @@ def test_extraction_persists_and_noop_does_not_call_llm(processing,tmp_path,monk
         from websensors_flow_rag.utils import sha256_bytes
         manifests=[json.loads(v) for (_,k),v in objects.items() if k.endswith('/manifest.json') and 'extraction' in json.loads(v)]
         assert len(manifests)==1 and manifests[0]['created_at'].endswith('+00:00')
+        assert manifests[0]['document_type']=='ficha_inscricao'
+        assert manifests[0]['extraction']['schema_version'] and manifests[0]['extraction']['prompt_version']
         for artifact in manifests[0]['artifacts'].values():
             bucket,key=artifact['uri'][5:].split('/',1)
             assert artifact['sha256']==sha256_bytes(objects[bucket,key])

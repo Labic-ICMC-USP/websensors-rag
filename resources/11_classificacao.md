@@ -22,18 +22,18 @@ services:
 
 classification:
   enabled: true
-  projects_dir: /exp/golomarcos/websensors-rag/projects
+  projects_dir: projects
   max_input_chars: 100000
 ```
 
 Integre aos blocos existentes; não duplique `services`. A chave permanece no
-`.env`, sem valor literal no YAML. O caminho absoluto é específico desta máquina.
-Caminhos relativos são resolvidos a partir da raiz do YAML em `config/`, ou do
+`.env`, sem valor literal no YAML. Caminhos relativos são resolvidos a partir da raiz do YAML em `config/`, ou do
 diretório do YAML em outros locais.
 
 A classificação é opt-in: desabilitada no YAML de exemplo, mantém os nove steps
 anteriores e o hash legado. Habilitada, acrescenta um step após o Docling, antes
-de armazenar Silver, totalizando dez steps. Indexação legada sem projeto não
+de armazenar Silver, totalizando dez steps (doze com extração e índices
+estruturados). Indexação legada sem projeto não
 executa classificação LLM. Os fluxos curtos do extrator OpenWebUI só convertem;
 a classificação ocorre quando a Tool inicia o processamento completo.
 

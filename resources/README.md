@@ -30,6 +30,7 @@ Este diretório descreve os serviços utilizados pelo `websensors-flow-rag`.
 | `10_openrouter.md` | embeddings remotos e limites da integração Docling |
 | `11_classificacao.md` | classificação documental via Gemini/OpenRouter |
 | `12_extracao.md` | extração por tipo, schemas, evidências e revisão |
+| `13_indices_estruturados.md` | publicação da extração em índices por tipo (Fase E) |
 
 ## Serviços obrigatórios
 

@@ -161,6 +161,7 @@ def create_rag_app(settings: RAGSettings, *, startup_prepared: bool = False) -> 
                 "steps": [step.name for step in settings.to_flow_settings().steps],
                 "classification": {"enabled": settings.classification.enabled, "model": settings.services.llm.model if settings.classification.enabled and settings.services.llm else None},
                 "extraction": {"enabled": settings.extraction.enabled},
+                "structured_index": {"enabled": settings.structured_index.enabled, "index_prefix": settings.structured_index.index_prefix if settings.structured_index.enabled else None},
                 "saida": ["markdown", "json"] + (["classification"] if settings.classification.enabled else []) + (["extraction"] if settings.extraction.enabled else []),
                 "chunking": settings.indexing.chunking.model_dump(mode="json"),
             },

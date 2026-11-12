@@ -151,6 +151,7 @@ class WorkItem:
     classification_metadata: dict[str, Any] = field(default_factory=dict)
     extraction: dict[str, Any] | None = None
     extraction_metadata: dict[str, Any] = field(default_factory=dict)
+    structured: dict[str, Any] | None = None
     markdown: str = ""
     docling_json: dict[str, Any] = field(default_factory=dict)
     docling_metadata: dict[str, Any] = field(default_factory=dict)

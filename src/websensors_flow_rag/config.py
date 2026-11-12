@@ -189,6 +189,14 @@ class ExtractionSettings(StrictModel):
     structured_output: bool | None = None
     max_input_chars: int = Field(default=100000, ge=1)
     max_output_tokens: int = Field(default=4096, ge=128)
+    # Inclui cabeçalhos/rodapés do JSON Docling, omitidos pelo Markdown exportado.
+    include_page_furniture: bool = False
+
+
+class StructuredIndexSettings(StrictModel):
+    """Publicação da extração em índices Elasticsearch por projeto/tipo documental."""
+    enabled: bool = False
+    index_prefix: str = Field(default="rag-estruturado", pattern=r"^[a-z0-9][a-z0-9_-]{0,40}$")
 
 
 class ServicesSettings(StrictModel):
@@ -298,6 +306,7 @@ class RAGSettings(StrictModel):
     services: ServicesSettings
     classification: ClassificationSettings = Field(default_factory=ClassificationSettings)
     extraction: ExtractionSettings = Field(default_factory=ExtractionSettings)
+    structured_index: StructuredIndexSettings = Field(default_factory=StructuredIndexSettings)
     indexing: IndexingSettings = Field(default_factory=IndexingSettings)
     startup: StartupSettings = Field(default_factory=StartupSettings)
     search: SearchSettings = Field(default_factory=SearchSettings)
@@ -332,6 +341,12 @@ class RAGSettings(StrictModel):
             if not self.classification.enabled or self.services.llm is None:
                 raise ConfigurationError("Extração exige classificação habilitada e services.llm.")
             steps.insert(4, StepDefinition(name="extrair_dados_estruturados", class_path="websensors_flow_rag.extraction.steps.ExtractStructuredDataStep"))
+
+        if self.structured_index.enabled:
+            if not self.extraction.enabled:
+                raise ConfigurationError("Índices estruturados exigem extração habilitada.")
+            position = next(i for i, step in enumerate(steps) if step.name == "preparar_revisao_elasticsearch") + 1
+            steps.insert(position, StepDefinition(name="preparar_registro_estruturado", class_path="websensors_flow_rag.structured.steps.StageStructuredRecordStep"))
 
         mlflow = self.observability.mlflow
         graylog = self.observability.graylog
