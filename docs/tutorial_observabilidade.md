@@ -75,6 +75,11 @@ observability:
 
 Cada fluxo registra informações de execução, métricas dos steps, modelos utilizados e artefatos declarados pelo pipeline.
 
+Para uma visão rápida, abra o artefato `resumo.md` da execução: status, duração,
+resultado do documento (ação, revisão, tipo, status da extração, campos
+preenchidos/vazios) e uma tabela das etapas. Ele não inclui texto, valores
+extraídos nem nome do arquivo. Veja [testes](testes.md#3-ver-o-resultado-no-mlflow).
+
 Quando `track_searches` está habilitado, as consultas também podem registrar modalidade, quantidade de resultados e duração.
 
 ## Graylog

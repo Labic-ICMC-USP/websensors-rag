@@ -125,7 +125,8 @@ do Docling é reaproveitada sempre que o PDF é o mesmo.
 
 Cada execução aparece no MLflow (experimento `websensors-flow-rag`) com o tempo de
 cada etapa, os modelos usados e métricas como acerto do JSON, número de campos
-extraídos e conversões do Docling. Textos dos documentos, dados pessoais e chaves
+extraídos e conversões do Docling. O artefato `resumo.md` mostra o essencial
+de cada execução numa única página. Textos dos documentos, dados pessoais e chaves
 não são gravados no MLflow.
 
 ## 7. Onde fica cada coisa no código

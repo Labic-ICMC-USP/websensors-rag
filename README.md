@@ -206,6 +206,7 @@ na Tool, evitando conversão duplicada. O pipeline classifica o documento, extra
 dados com o schema do tipo e publica em índices por tipo; veja a
 [arquitetura](docs/arquitetura.md) e a [validação com documentos reais](docs/validacao_fase_g.md).
 Para instalar a API como serviço do usuário: `bash scripts/rag-api-install.sh`.
+Testes automatizados e de integração: [testes](docs/testes.md).
 
 ## Exemplo de indexação
 

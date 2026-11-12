@@ -510,7 +510,9 @@ class MLflowObserver(PipelineObserver):
         local_file.parent.mkdir(parents=True, exist_ok=True)
         local_file.write_text(text, encoding="utf-8")
         with self._quiet_mlflow():
-            self._mlflow.log_artifact(str(local_file), artifact_path=str(Path(artifact_path).parent))
+            parent = str(Path(artifact_path).parent)
+            # Arquivo na raiz dos artifacts: o MLflow não aceita artifact_path=".".
+            self._mlflow.log_artifact(str(local_file), artifact_path=None if parent == "." else parent)
 
     def _log_json_file(self, data: Any, *, artifact_path: str) -> None:
         text = json.dumps(data, ensure_ascii=False, indent=2, default=str)
@@ -596,9 +598,84 @@ class MLflowObserver(PipelineObserver):
                 self._log_json_file(self._events, artifact_path="events/events.json")
             except Exception:
                 pass
+            try:
+                self._log_text_file(build_run_summary_markdown(self._events, status), artifact_path="resumo.md")
+            except Exception:
+                pass
             with self._quiet_mlflow():
                 self._mlflow.end_run(status=mlflow_status)
             self._run_active = False
         if self._tmpdir is not None:
             self._tmpdir.cleanup()
             self._tmpdir = None
+
+
+_SUMMARY_MAX_METRICS = 8
+
+
+def _fmt(value: Any) -> str:
+    if isinstance(value, bool):
+        return "sim" if value else "não"
+    if isinstance(value, float):
+        return f"{value:.2f}" if abs(value) >= 0.01 or value == 0 else f"{value:.4f}"
+    if isinstance(value, (list, tuple)):
+        return ", ".join(str(item) for item in value) or "—"
+    if value is None or value == "":
+        return "—"
+    return str(value).replace("|", "\\|").replace("\n", " ")
+
+
+def build_run_summary_markdown(events: list[dict[str, Any]], status: str) -> str:
+    """Resumo de leitura rápida a partir dos eventos já registrados.
+
+    Usa somente dados que o observer já grava (status, durações, métricas e o
+    dicionário ``run_summary`` que um step pode expor em ``metadata``); não acessa
+    a saída do pipeline.
+    """
+    started = next((e for e in events if e.get("event_type") == "pipeline_started"), {})
+    finished = next((e for e in reversed(events) if e.get("event_type") in {"pipeline_completed", "pipeline_failed"}), {})
+    steps = [e for e in events if e.get("event_type") in {"step_completed", "step_failed"}]
+    result: dict[str, Any] = {}
+    for event in steps:
+        summary = (event.get("metadata") or {}).get("run_summary")
+        if isinstance(summary, dict):
+            result.update(summary)
+
+    lines = [
+        "# Resumo da execução", "",
+        "| Campo | Valor |", "| --- | --- |",
+        f"| Status | **{_fmt(status)}** |",
+        f"| Pipeline | {_fmt(started.get('pipeline_name'))} |",
+        f"| run_id | `{_fmt(started.get('run_id'))}` |",
+        f"| Início (UTC) | {_fmt(started.get('timestamp'))} |",
+        f"| Duração total (s) | {_fmt(finished.get('duration_seconds'))} |",
+        f"| Etapas concluídas | {sum(e.get('event_type') == 'step_completed' for e in steps)} |",
+    ]
+    if result:
+        lines += ["", "## Resultado", "", "| Campo | Valor |", "| --- | --- |"]
+        lines += [f"| {_fmt(key)} | {_fmt(value)} |" for key, value in result.items()]
+
+    failures = [e for e in steps if e.get("event_type") == "step_failed"]
+    if failures:
+        lines += ["", "## Erro", ""]
+        for event in failures:
+            message = str(event.get("error_message") or "")[:500]
+            lines.append(f"- **{_fmt(event.get('step_name'))}**: `{_fmt(event.get('error_type'))}` — {_fmt(message)}")
+
+    if steps:
+        lines += ["", "## Etapas", "", "| # | Etapa | Status | Duração (s) | Métricas principais |", "| --- | --- | --- | --- | --- |"]
+        for number, event in enumerate(steps, start=1):
+            # Duração e avisos já têm colunas próprias; has_output é interno.
+            metrics = {k: v for k, v in (event.get("metrics") or {}).items()
+                       if k not in {"duration_seconds", "warnings_count", "has_output"}}
+            shown = [f"{key}={_fmt(value)}" for key, value in list(metrics.items())[:_SUMMARY_MAX_METRICS]]
+            if len(metrics) > _SUMMARY_MAX_METRICS:
+                shown.append(f"(+{len(metrics) - _SUMMARY_MAX_METRICS})")
+            state = "ok" if event.get("event_type") == "step_completed" else "falhou"
+            warnings = len(event.get("warnings") or [])
+            if warnings:
+                state += f" ({warnings} aviso(s))"
+            lines.append(f"| {number} | {_fmt(event.get('step_name'))} | {state} | {_fmt(event.get('duration_seconds'))} | {'; '.join(shown) or '—'} |")
+
+    lines += ["", "Detalhes completos: `steps/`, `events/events.json` e métricas da execução."]
+    return "\n".join(lines) + "\n"

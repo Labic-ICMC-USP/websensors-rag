@@ -491,7 +491,7 @@ class PublishRevisionStep(PipelineStep):
                 has_output=True,
                 text="Indexação concluída sem alterações.",
                 metrics={"published": 0, "noop": 1},
-                metadata={"document_id": work.document_id, "revision_id": work.revision_id},
+                metadata={"document_id": work.document_id, "revision_id": work.revision_id, "run_summary": _run_summary(work, "noop")},
             )
 
         settings = load_context_settings(context)
@@ -532,7 +532,7 @@ class PublishRevisionStep(PipelineStep):
                 has_output=True,
                 text="Metadados atualizados sem reprocessamento do documento.",
                 metrics={"metadata_updated": 1, "chunks_updated": updated_chunks},
-                metadata={"document_id": work.document_id, "revision_id": work.revision_id},
+                metadata={"document_id": work.document_id, "revision_id": work.revision_id, "run_summary": _run_summary(work, "metadata_updated")},
             )
 
         es = ElasticsearchClient(settings.services.elasticsearch, settings.services.embeddings.dimensions)
@@ -632,8 +632,39 @@ class PublishRevisionStep(PipelineStep):
                 "structured_published": int(work.structured is not None),
                 "publication_compensated": compensated,
             },
-            metadata={"document_id": work.document_id, "revision_id": work.revision_id},
+            metadata={"document_id": work.document_id, "revision_id": work.revision_id,
+                      "run_summary": _run_summary(work, work.final_result["action"])},
         )
+
+
+def _run_summary(work: WorkItem, action: str) -> dict[str, Any]:
+    """Resumo da execução para observabilidade: só identificadores, tipos, status e contagens.
+
+    Nunca inclui texto do documento, valores extraídos, evidências, nome do arquivo ou chaves.
+    """
+    summary: dict[str, Any] = {
+        "action": action, "project": work.request.project, "document_id": work.document_id,
+        "revision_id": work.revision_id, "source_sha256": work.source_sha256,
+    }
+    # No noop os chunks não são recarregados: omitir em vez de mostrar zero.
+    chunks = len(work.chunks or []) or (work.final_result or {}).get("chunks")
+    if chunks:
+        summary["chunks"] = chunks
+    if work.classification is not None:
+        summary["document_type"] = work.classification.get("document_type")
+        summary["classification_needs_review"] = bool(work.classification.get("needs_review"))
+        summary["classification_source"] = "declarado" if (work.request.document_type is not None) else "llm"
+    if work.extraction is not None:
+        data = work.extraction.get("data") or {}
+        summary["extraction_status"] = work.extraction.get("status")
+        summary["extraction_fields_total"] = len(data)
+        summary["extraction_fields_populated"] = sum(v not in (None, "", [], {}) for v in data.values())
+        summary["extraction_fields_empty"] = sorted(k for k, v in data.items() if v in (None, "", [], {}))
+        summary["extraction_sources"] = len(work.extraction.get("sources") or [])
+        summary["extraction_warnings"] = len(work.extraction.get("warnings") or [])
+    if work.structured is not None:
+        summary["structured_alias"] = work.structured.get("alias")
+    return summary
 
 
 def _structured_summary(pointer: dict[str, Any]) -> dict[str, Any]:

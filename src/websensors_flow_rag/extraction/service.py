@@ -54,10 +54,27 @@ def has_value(value):
     return value is not None and value != ''
 
 
+def _schema_problem(error) -> str:
+    """Descreve o erro com caminho e nomes do schema, sem repetir valores do documento."""
+    path = '.'.join(str(part) for part in error.absolute_path) or 'raiz'
+    rule = error.validator
+    if rule == 'additionalProperties' and isinstance(error.instance, dict):
+        extras = sorted(str(key)[:40] for key in set(error.instance) - set(error.schema.get('properties', {})))
+        allowed = sorted(error.schema.get('properties', {}))
+        return f"{path}: propriedades não permitidas {extras}; use somente {allowed}"
+    if rule == 'required' and isinstance(error.instance, dict):
+        return f"{path}: faltam as propriedades obrigatórias {[k for k in error.validator_value if k not in error.instance]}"
+    if rule in {'type', 'enum', 'minimum', 'minLength'}:
+        return f"{path}: valor fora da regra {rule} (esperado {error.validator_value!r})"
+    return f"{path}: regra {rule}"
+
+
 def validate_extraction(data, schema, markdown, valid_pages):
-    error = next(Draft202012Validator(schema).iter_errors(data), None)
-    if error is not None:
-        raise ExtractionValidationError(f'Resposta incompatível com schema; regra: {error.validator}.')
+    errors = sorted(Draft202012Validator(schema).iter_errors(data), key=lambda e: [str(p) for p in e.absolute_path])
+    if errors:
+        details = '; '.join(_schema_problem(error) for error in errors[:5])
+        more = f' (+{len(errors) - 5} erro(s))' if len(errors) > 5 else ''
+        raise ExtractionValidationError(f'Resposta incompatível com schema: {details}{more}.')
     text = _normalize(markdown)
     relaxed_text = None
     problems = []

@@ -165,3 +165,16 @@ def test_relaxed_evidence_ignores_markdown_formatting_but_not_words():
     value['sources'] = [{'field': 'requisitos_obrigatorios', 'quote': 'Estar matriculado em Ciência da Computação', 'page': None}]
     with pytest.raises(ExtractionValidationError):
         validate_extraction(value, schema, markdown, set())
+
+
+def test_schema_error_names_path_and_extra_keys_without_values():
+    from websensors_flow_rag.extraction.service import validate_extraction
+    schema = load_extraction_resources(ROOT, 'fai', 'curriculo_lattes')[1]
+    value = answer('curriculo_lattes')
+    value['data']['formacao'] = [{'nivel': 'Graduação', 'instituicao': 'Universidade Sigilosa', 'curso': None, 'inicio': None,
+                                  'fim': None, 'situacao': None, 'titulo': None, 'orientador': 'Pessoa Sigilosa'}]
+    with pytest.raises(ExtractionValidationError) as caught:
+        validate_extraction(value, schema, 'texto', set())
+    message = str(caught.value)
+    assert "data.formacao.0: propriedades não permitidas ['orientador']" in message
+    assert 'Sigilosa' not in message

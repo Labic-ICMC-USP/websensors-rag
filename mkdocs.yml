@@ -32,5 +32,6 @@ nav:
       - CLI: tutorial_cli.md
       - OpenWebUI: tutorial_openwebui.md
       - Novos tipos documentais: novos_tipos_documentais.md
+      - Testes: testes.md
       - Validação (Fase G): validacao_fase_g.md
       - Demonstração FAI: demonstracao_fai.md
