@@ -19,10 +19,16 @@ com `structured_index` habilitado, o registro no índice do tipo.
 O YAML local habilita MLflow; métricas e eventos usam os observers existentes.
 
 O stdout contém apenas o resultado JSON; logs/progresso seguem para stderr.
-`--metadata` aceita um objeto JSON. `--document-id` fornece uma identidade lógica
-estável no projeto; o ID interno é derivado dessa identidade e do projeto.
-Sem essa opção, a identidade usa o nome do arquivo. Fonte alterada recebe outra
-chave Bronze com SHA-256, preservando o original anterior.
+`--metadata` aceita um objeto JSON.
+
+**Identidade do documento.** Por padrão, o documento é identificado pelo
+**conteúdo** do PDF (SHA-256), não pelo nome: o mesmo PDF enviado de novo, com
+qualquer nome e por qualquer interface, é o mesmo documento e retorna `noop` se
+nada mudou. Um PDF diferente, mesmo com nome igual, é outro documento.
+Para tratar conteúdos diferentes como versões do mesmo documento (por exemplo,
+um edital retificado), informe `--document-id` com uma identidade estável no
+projeto; o ID interno é derivado dela e do projeto. Cada original fica numa chave
+Bronze com seu SHA-256, preservando os anteriores.
 
 Com classificação habilitada, `--document-type` usa o tipo declarado (validado
 contra as categorias do projeto), sem apresentá-lo como predição LLM. Omita esse
@@ -34,7 +40,7 @@ não equivale ao aceite funcional do conjunto completo.
 
 ## Reutilizar conversão existente
 
-O serviço procura cache Silver compatível com projeto, identidade, hash do
+O serviço procura cache Silver compatível com projeto, documento, hash do
 original e hash das opções Docling. Se encontrado, não repete a conversão.
 Quando a CLI converte, ela própria grava esse cache, então execuções futuras do
 mesmo original (inclusive após mudar prompts ou modelo) não reconvertem.

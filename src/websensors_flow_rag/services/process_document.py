@@ -59,8 +59,9 @@ class ProcessDocumentService:
         if artifacts is not None:
             if artifacts.source_sha256 != digest or artifacts.options_sha256 != docling_options_hash(self.settings):
                 raise ValueError("Artefatos Docling não correspondem ao original ou às opções configuradas.")
-        # Identidade estável no projeto, com fonte imutável por hash.
-        identity = document_id or filename
+        # Identidade pelo conteúdo: o mesmo PDF é o mesmo documento, qualquer que seja o nome.
+        # Um document_id explícito permite versionar conteúdos diferentes sob a mesma identidade.
+        identity = document_id or f"sha256:{digest}"
         normalized_id = hashlib.sha256(f"{project}:{identity}".encode()).hexdigest()[:32]
         key = f"projetos/{project}/documentos/{normalized_id}/{digest}/{filename}"
         values = dict(metadata or {})

@@ -87,8 +87,8 @@ def test_external_conversion_then_processing_reuses_artifacts_and_noop(processin
         extracted = service.convert_for_openwebui(filename='ficha.pdf', content=b'%PDF-original', project='fai')
         assert extracted['page_content'].startswith('# Declaração')
         assert calls == {'docling': 1, 'embedding': 0}
-        # Mesmo original por outra interface: nome/projeto/hash determinam o cache.
-        request = service.prepare_upload(filename='ficha.pdf', content=b'%PDF-original', project='fai', require_cached_artifacts=True)
+        # Mesmo original por outra interface, mesmo com outro nome: projeto/hash determinam o cache.
+        request = service.prepare_upload(filename='ficha-renomeada.pdf', content=b'%PDF-original', project='fai', require_cached_artifacts=True)
         assert request.docling_artifacts is not None
         result = service.run(request)
         assert result.report.status == 'success', result.failure
@@ -213,3 +213,17 @@ def test_legacy_index_route_keeps_contract(processing):
         result = client.get(response.json()['status_url'], headers=headers)
         assert result.json()['status'] == 'success', result.text
         assert 'project' not in result.json()['result']
+
+
+def test_document_identity_follows_content_not_filename(processing):
+    settings, _, _, _ = processing
+    service = ProcessDocumentService(settings)
+    try:
+        upload = lambda name, content, **kw: service.prepare_upload(filename=name, content=content, project='fai', **kw).document_id
+        original = upload('a.pdf', b'%PDF-um')
+        assert upload('copia de a.pdf', b'%PDF-um') == original
+        assert upload('a.pdf', b'%PDF-dois') != original
+        assert service.prepare_upload(filename='a.pdf', content=b'%PDF-um', project='outro').document_id != original
+        # Identidade explícita continua permitindo versionar conteúdos diferentes.
+        assert upload('a.pdf', b'%PDF-um', document_id='edital-2026') == upload('b.pdf', b'%PDF-dois', document_id='edital-2026')
+    finally: service.close()

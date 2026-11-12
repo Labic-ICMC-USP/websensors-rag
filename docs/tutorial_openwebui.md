@@ -96,8 +96,8 @@ Em **Painel de administração → Configurações → Documentos**:
 
 O OpenWebUI acrescenta `/process`, envia o original como bytes e autentica com
 Bearer. O endpoint é `PUT /api/v1/openwebui/process`. O header de nome original
-preserva a mesma identidade usada pelo CLI; não use o nome de armazenamento com
-prefixo UUID como identidade do documento.
+registra o nome legível do arquivo (sem o prefixo UUID do armazenamento). A
+identidade do documento vem do conteúdo do PDF, a mesma usada pela CLI.
 
 Mantenha **Bypass Embedding and Retrieval** ativado, conforme a decisão atual,
 para não gerar embeddings no OpenWebUI. O RAG tem sua própria etapa de embeddings

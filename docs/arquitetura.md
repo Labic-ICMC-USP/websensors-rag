@@ -104,6 +104,15 @@ flowchart LR
 
 ## 5. Versões do documento
 
+O documento é identificado pelo **conteúdo do PDF**, não pelo nome: reenviar o
+mesmo PDF (com qualquer nome, pelo chat, API ou CLI) cai no mesmo documento; um
+PDF diferente é outro documento. Para versionar conteúdos diferentes sob a mesma
+identidade (ex.: edital retificado), o cliente informa um `document_id`.
+
+No Silver, a pasta `documentos/<document_id>/<revision_id>/` usa dois hashes: o
+do documento (projeto + conteúdo do PDF) e o da versão (PDF + configuração do
+pipeline).
+
 Cada processamento que muda algo cria uma **nova versão** (revisão). Ela é
 montada desativada e só é ativada depois de validada; nesse momento a versão
 anterior é desativada. Se houver erro na troca, o sistema volta para a versão
