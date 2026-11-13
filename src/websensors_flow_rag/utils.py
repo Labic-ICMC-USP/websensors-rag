@@ -4,7 +4,7 @@ import hashlib
 import json
 import mimetypes
 import re
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from websensors_flow_rag.config import RAGSettings, load_rag_settings
@@ -32,8 +32,35 @@ def pipeline_hash(settings: RAGSettings) -> str:
     }
     if settings.services.embeddings.truncate_prompt_tokens is not None:
         payload["embedding"]["truncate_prompt_tokens"] = settings.services.embeddings.truncate_prompt_tokens
+    if settings.classification.enabled:
+        root = classification_projects_dir(settings)
+        resources = {str(p.relative_to(root)): sha256_bytes(p.read_bytes()) for p in sorted(root.glob("*/classification/*")) if p.is_file()}
+        payload["classification"] = {
+            "config": settings.classification.model_dump(mode="json"),
+            "llm": settings.services.llm.model_dump(mode="json", exclude={"api_key"}) if settings.services.llm else None,
+            "resources": resources,
+        }
+    if settings.extraction.enabled:
+        root = classification_projects_dir(settings)
+        payload["extraction"] = {
+            "config": settings.extraction.model_dump(mode="json"),
+            "resources": {str(p.relative_to(root)):sha256_bytes(p.read_bytes()) for p in sorted(root.glob("*/document_types/*/*")) if p.is_file()},
+        }
+    if settings.structured_index.enabled:
+        payload["structured_index"] = settings.structured_index.model_dump(mode="json")
     encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
+
+
+def docling_options_hash(settings: RAGSettings) -> str:
+    encoded = json.dumps(settings.services.docling.options, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def docling_cache_key(settings: RAGSettings, document_id: str, source_sha256: str) -> str:
+    """Chave Silver do par Markdown/JSON Docling por documento, fonte e opções de conversão."""
+    prefix = settings.services.minio.silver_prefix.strip("/")
+    return f"{prefix}/{document_id}/conversions/{source_sha256}/{docling_options_hash(settings)}/artifacts.json"
 
 
 def revision_id(source_sha256: str, processing_hash: str) -> str:
@@ -75,3 +102,12 @@ def load_context_settings(context: Any) -> RAGSettings:
     if not source_path:
         raise RuntimeError("O caminho do YAML global não está disponível no contexto do flow.")
     return load_rag_settings(source_path)
+
+
+def classification_projects_dir(settings: RAGSettings) -> Path:
+    directory = Path(settings.classification.projects_dir)
+    if directory.is_absolute():
+        return directory
+    source = Path(settings.source_path) if settings.source_path else Path.cwd() / "rag.yaml"
+    root = source.parent.parent if source.parent.name == "config" else source.parent
+    return root / directory

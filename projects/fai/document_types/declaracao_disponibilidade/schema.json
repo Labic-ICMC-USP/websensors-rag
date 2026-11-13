@@ -1,0 +1,113 @@
+{
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "declarante": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "local": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modalidade": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "processo_seletivo": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "data": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "carga_horaria_semanal": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "restricoes_horario": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "declarante",
+        "local",
+        "modalidade",
+        "processo_seletivo",
+        "data",
+        "carga_horaria_semanal",
+        "restricoes_horario"
+      ],
+      "additionalProperties": false
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "enum": [
+              "declarante",
+              "local",
+              "modalidade",
+              "processo_seletivo",
+              "data",
+              "carga_horaria_semanal",
+              "restricoes_horario"
+            ]
+          },
+          "quote": {
+            "type": "string",
+            "minLength": 1
+          },
+          "page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          }
+        },
+        "required": [
+          "field",
+          "quote",
+          "page"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "data",
+    "sources",
+    "warnings"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FAI: declaracao_disponibilidade"
+}

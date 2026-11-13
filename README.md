@@ -4,6 +4,12 @@
 
 O MinIO armazena os arquivos de origem e os artefatos derivados. O Docling centraliza a conversão de PDFs, imagens e outros formatos suportados. A saída documental é preservada em Markdown e JSON. O serviço gera chunks estruturais, cria embeddings e publica os dados no Elasticsearch.
 
+O processamento por projeto pode classificar documentos e extrair dados com
+schemas e evidências via LLM, publicando o resultado em índices Elasticsearch por
+tipo. Consulte [extração estruturada](resources/12_extracao.md),
+[índices estruturados](resources/13_indices_estruturados.md) e
+[como adicionar tipos documentais](docs/novos_tipos_documentais.md).
+
 A recuperação oferece três modalidades.
 
 | Modalidade | Funcionamento |
@@ -142,6 +148,12 @@ search:
     rank_constant: 60
 ```
 
+## Preparar MinIO local
+
+O [guia do MinIO](resources/03_minio.md) usa `compose.minio.yaml` para iniciar
+o AIStor com licença, dados persistentes e buckets Bronze/Silver. O script
+`scripts/minio-init.sh` prepara o usuário do RAG e verifica leitura e escrita.
+
 ## Inicialização
 
 O diagnóstico verifica Elasticsearch, MinIO, Docling e embeddings antes de criar ou validar índices.
@@ -156,7 +168,7 @@ A API pode ser iniciada em seguida.
 websensors-flow-rag-api --config config/rag.local.yaml
 ```
 
-A saída do terminal apresenta os serviços em uma tabela. Durante cada indexação, os nove steps são exibidos individualmente com estado, duração, métricas, progresso e ETA.
+A saída do terminal apresenta os serviços em uma tabela. Durante cada indexação, os steps são exibidos individualmente com estado, duração, métricas, progresso e ETA: nove no fluxo básico e doze com classificação, extração e índices estruturados habilitados.
 
 ## API
 
@@ -180,6 +192,21 @@ Principais operações.
 | POST | `/search/bm25` | executar busca lexical |
 | POST | `/search/semantic` | executar busca semântica |
 | POST | `/search/hybrid` | executar busca híbrida com RRF |
+| POST | `/api/v1/documents/process` | enviar arquivo (multipart) para processamento completo |
+| GET | `/api/v1/jobs/{job_id}` | acompanhar processamento documental |
+| PUT | `/api/v1/openwebui/process` | extrator externo do OpenWebUI (conversão no upload) |
+
+## Processamento de arquivo local e OpenWebUI
+
+O `ProcessDocumentService` centraliza upload Bronze e execução do Flow. A mesma
+implementação atende o CLI e `POST /api/v1/documents/process`; consulte
+[CLI](docs/tutorial_cli.md) e [OpenWebUI](docs/tutorial_openwebui.md).
+A rota de extrator externo permite guardar Markdown/JSON Docling e reutilizá-los
+na Tool, evitando conversão duplicada. O pipeline classifica o documento, extrai os
+dados com o schema do tipo e publica em índices por tipo; veja a
+[arquitetura](docs/arquitetura.md) e a [validação com documentos reais](docs/validacao_fase_g.md).
+Para instalar a API como serviço do usuário: `bash scripts/rag-api-install.sh`.
+Testes automatizados e de integração: [testes](docs/testes.md).
 
 ## Exemplo de indexação
 

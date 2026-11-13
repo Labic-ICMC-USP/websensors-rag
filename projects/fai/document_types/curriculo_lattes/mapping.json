@@ -1,0 +1,167 @@
+{
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "document_id": {
+        "type": "keyword"
+      },
+      "revision_id": {
+        "type": "keyword"
+      },
+      "document_type": {
+        "type": "keyword"
+      },
+      "filename": {
+        "type": "keyword"
+      },
+      "extraction_version": {
+        "type": "keyword"
+      },
+      "schema_version": {
+        "type": "keyword"
+      },
+      "active": {
+        "type": "boolean"
+      },
+      "data": {
+        "type": "object",
+        "dynamic": "strict",
+        "properties": {
+          "nome": {
+            "type": "text"
+          },
+          "lattes_id": {
+            "type": "text"
+          },
+          "lattes_url": {
+            "type": "text"
+          },
+          "orcid": {
+            "type": "text"
+          },
+          "data_atualizacao": {
+            "type": "text"
+          },
+          "resumo": {
+            "type": "text"
+          },
+          "formacao": {
+            "type": "object",
+            "dynamic": "strict",
+            "properties": {
+              "nivel": {
+                "type": "text"
+              },
+              "instituicao": {
+                "type": "text"
+              },
+              "curso": {
+                "type": "text"
+              },
+              "inicio": {
+                "type": "text"
+              },
+              "fim": {
+                "type": "text"
+              },
+              "situacao": {
+                "type": "text"
+              },
+              "titulo": {
+                "type": "text"
+              }
+            }
+          },
+          "experiencias": {
+            "type": "object",
+            "dynamic": "strict",
+            "properties": {
+              "instituicao": {
+                "type": "text"
+              },
+              "cargo": {
+                "type": "text"
+              },
+              "inicio": {
+                "type": "text"
+              },
+              "fim": {
+                "type": "text"
+              },
+              "atividades": {
+                "type": "text"
+              }
+            }
+          },
+          "projetos": {
+            "type": "object",
+            "dynamic": "strict",
+            "properties": {
+              "titulo": {
+                "type": "text"
+              },
+              "inicio": {
+                "type": "text"
+              },
+              "fim": {
+                "type": "text"
+              },
+              "descricao": {
+                "type": "text"
+              }
+            }
+          },
+          "publicacoes": {
+            "type": "object",
+            "dynamic": "strict",
+            "properties": {
+              "titulo": {
+                "type": "text"
+              },
+              "ano": {
+                "type": "text"
+              },
+              "veiculo": {
+                "type": "text"
+              }
+            }
+          }
+        }
+      },
+      "source": {
+        "type": "object",
+        "dynamic": "strict",
+        "properties": {
+          "bucket": {
+            "type": "keyword"
+          },
+          "key": {
+            "type": "keyword"
+          }
+        }
+      },
+      "project": {
+        "type": "keyword"
+      },
+      "status": {
+        "type": "keyword"
+      },
+      "needs_review": {
+        "type": "boolean"
+      },
+      "warnings": {
+        "type": "text"
+      },
+      "sources": {
+        "type": "object",
+        "enabled": false
+      },
+      "created_at": {
+        "type": "date"
+      },
+      "updated_at": {
+        "type": "date"
+      }
+    }
+  }
+}

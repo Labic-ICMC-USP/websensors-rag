@@ -115,6 +115,24 @@ services:
     batch_size: 32
     timeout_seconds: 120
 
+# Processamento documental por projeto (opt-in). Exige services.llm para
+# classificação/extração; consulte resources/11_classificacao.md e 12_extracao.md.
+classification:
+  enabled: false
+  projects_dir: projects
+  max_input_chars: 100000
+
+extraction:
+  enabled: false
+  max_input_chars: 100000
+  max_output_tokens: 4096
+  include_page_furniture: false
+
+# Fase E: publica a extração em índices por tipo (<prefixo>-<projeto>-<tipo>).
+structured_index:
+  enabled: false
+  index_prefix: rag-estruturado
+
 startup:
   enabled: true
   retries: 2

@@ -1,0 +1,24 @@
+[Unit]
+Description=WebSensors-RAG API
+After=network.target websensors-rag-mlflow.service
+
+[Service]
+Type=simple
+WorkingDirectory=/exp/golomarcos/websensors-rag
+ExecStart=%h/miniconda3/envs/FAI_final/bin/websensors-flow-rag-api --config /exp/golomarcos/websensors-rag/config/rag.local.yaml
+Restart=on-failure
+RestartSec=10
+Nice=10
+CPUQuota=100%
+MemoryHigh=1536M
+MemoryMax=2G
+TasksMax=128
+UMask=0077
+Environment=CUDA_VISIBLE_DEVICES=
+Environment=OMP_NUM_THREADS=1
+Environment=OPENBLAS_NUM_THREADS=1
+Environment=MKL_NUM_THREADS=1
+Environment=MLFLOW_DISABLE_AGENT_HINT=1
+
+[Install]
+WantedBy=default.target

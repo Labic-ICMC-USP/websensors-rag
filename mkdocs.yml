@@ -5,6 +5,13 @@ theme:
   name: material
   language: pt-BR
 
+markdown_extensions:
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
 nav:
   - Início: index.md
   - Arquitetura: arquitetura.md
@@ -20,3 +27,11 @@ nav:
       - Busca semântica: tutorial_busca_semantica.md
       - Busca híbrida: tutorial_busca_hibrida.md
       - Integração OpenAPI: tutorial_openapi.md
+  - Processamento documental:
+      - Plano e decisões: plano_processamento_documental.md
+      - CLI: tutorial_cli.md
+      - OpenWebUI: tutorial_openwebui.md
+      - Novos tipos documentais: novos_tipos_documentais.md
+      - Testes: testes.md
+      - Validação (Fase G): validacao_fase_g.md
+      - Demonstração FAI: demonstracao_fai.md

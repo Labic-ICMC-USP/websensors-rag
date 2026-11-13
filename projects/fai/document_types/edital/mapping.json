@@ -1,0 +1,137 @@
+{
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "document_id": {
+        "type": "keyword"
+      },
+      "revision_id": {
+        "type": "keyword"
+      },
+      "document_type": {
+        "type": "keyword"
+      },
+      "filename": {
+        "type": "keyword"
+      },
+      "extraction_version": {
+        "type": "keyword"
+      },
+      "schema_version": {
+        "type": "keyword"
+      },
+      "active": {
+        "type": "boolean"
+      },
+      "data": {
+        "type": "object",
+        "dynamic": "strict",
+        "properties": {
+          "orgao": {
+            "type": "text"
+          },
+          "processo_seletivo": {
+            "type": "text"
+          },
+          "objeto": {
+            "type": "text"
+          },
+          "modalidade": {
+            "type": "text"
+          },
+          "bolsa_mensal": {
+            "type": "text"
+          },
+          "vagas": {
+            "type": "double"
+          },
+          "carga_horaria_semanal": {
+            "type": "double"
+          },
+          "duracao_meses": {
+            "type": "double"
+          },
+          "nota_minima": {
+            "type": "double"
+          },
+          "requisitos_obrigatorios": {
+            "type": "text"
+          },
+          "requisitos_desejaveis": {
+            "type": "text"
+          },
+          "documentos_exigidos": {
+            "type": "text"
+          },
+          "cronograma": {
+            "type": "object",
+            "dynamic": "strict",
+            "properties": {
+              "etapa": {
+                "type": "text"
+              },
+              "data_inicio": {
+                "type": "text"
+              },
+              "data_fim": {
+                "type": "text"
+              },
+              "observacao": {
+                "type": "text"
+              }
+            }
+          },
+          "criterios_avaliacao": {
+            "type": "object",
+            "dynamic": "strict",
+            "properties": {
+              "criterio": {
+                "type": "text"
+              },
+              "descricao": {
+                "type": "text"
+              },
+              "pontuacao_maxima": {
+                "type": "double"
+              }
+            }
+          }
+        }
+      },
+      "source": {
+        "type": "object",
+        "dynamic": "strict",
+        "properties": {
+          "bucket": {
+            "type": "keyword"
+          },
+          "key": {
+            "type": "keyword"
+          }
+        }
+      },
+      "project": {
+        "type": "keyword"
+      },
+      "status": {
+        "type": "keyword"
+      },
+      "needs_review": {
+        "type": "boolean"
+      },
+      "warnings": {
+        "type": "text"
+      },
+      "sources": {
+        "type": "object",
+        "enabled": false
+      },
+      "created_at": {
+        "type": "date"
+      },
+      "updated_at": {
+        "type": "date"
+      }
+    }
+  }
+}

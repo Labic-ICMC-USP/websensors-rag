@@ -1,0 +1,129 @@
+{
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "candidato": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "registro_academico": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "curso": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "instituicao": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "campus": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "email": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "telefone": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "data_inscricao": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "processo_seletivo": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "candidato",
+        "registro_academico",
+        "curso",
+        "instituicao",
+        "campus",
+        "email",
+        "telefone",
+        "data_inscricao",
+        "processo_seletivo"
+      ],
+      "additionalProperties": false
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "enum": [
+              "candidato",
+              "registro_academico",
+              "curso",
+              "instituicao",
+              "campus",
+              "email",
+              "telefone",
+              "data_inscricao",
+              "processo_seletivo"
+            ]
+          },
+          "quote": {
+            "type": "string",
+            "minLength": 1
+          },
+          "page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          }
+        },
+        "required": [
+          "field",
+          "quote",
+          "page"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "data",
+    "sources",
+    "warnings"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FAI: ficha_inscricao"
+}

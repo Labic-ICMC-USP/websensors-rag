@@ -1,0 +1,174 @@
+{
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "titular": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "emissor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "competencia": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "data_emissao": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "vencimento": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "valor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "endereco": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "logradouro": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "numero": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "complemento": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "bairro": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "cidade": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "uf": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "cep": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "texto_original": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "logradouro",
+            "numero",
+            "complemento",
+            "bairro",
+            "cidade",
+            "uf",
+            "cep",
+            "texto_original"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "titular",
+        "emissor",
+        "competencia",
+        "data_emissao",
+        "vencimento",
+        "valor",
+        "endereco"
+      ],
+      "additionalProperties": false
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "enum": [
+              "titular",
+              "emissor",
+              "competencia",
+              "data_emissao",
+              "vencimento",
+              "valor",
+              "endereco"
+            ]
+          },
+          "quote": {
+            "type": "string",
+            "minLength": 1
+          },
+          "page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          }
+        },
+        "required": [
+          "field",
+          "quote",
+          "page"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "data",
+    "sources",
+    "warnings"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FAI: comprovante_residencia"
+}

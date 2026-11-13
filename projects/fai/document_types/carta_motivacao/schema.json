@@ -1,0 +1,129 @@
+{
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "candidato": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "curso": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "instituicao": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "destinatario": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "processo_seletivo": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "motivacao": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "data": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "local": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "competencias": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "candidato",
+        "curso",
+        "instituicao",
+        "destinatario",
+        "processo_seletivo",
+        "motivacao",
+        "data",
+        "local",
+        "competencias"
+      ],
+      "additionalProperties": false
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "enum": [
+              "candidato",
+              "curso",
+              "instituicao",
+              "destinatario",
+              "processo_seletivo",
+              "motivacao",
+              "data",
+              "local",
+              "competencias"
+            ]
+          },
+          "quote": {
+            "type": "string",
+            "minLength": 1
+          },
+          "page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          }
+        },
+        "required": [
+          "field",
+          "quote",
+          "page"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "data",
+    "sources",
+    "warnings"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FAI: carta_motivacao"
+}

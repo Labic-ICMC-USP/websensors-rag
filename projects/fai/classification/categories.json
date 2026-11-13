@@ -1,0 +1,11 @@
+{
+  "edital": "Regras oficiais de seleção, requisitos, prazos e critérios; mencionar edital não basta.",
+  "carta_motivacao": "Apresentação pessoal com razões e interesse na candidatura.",
+  "comprovante_matricula": "Comprova vínculo acadêmico ou matrícula, mesmo com título genérico declaração.",
+  "comprovante_residencia": "Comprova endereço do titular, incluindo conta de energia; distinguir endereço da concessionária.",
+  "documento_identificacao_foto": "Documento oficial de identificação com foto, como CNH; foto em currículo não basta.",
+  "curriculo_lattes": "Currículo Vitae ou Lattes com formação e trajetória profissional ou acadêmica.",
+  "declaracao_disponibilidade": "Declaração de disponibilidade de horários, carga horária ou atuação presencial.",
+  "ficha_inscricao": "Formulário de candidatura com campos e dados de inscrição.",
+  "outro": "Documento desconhecido, fora das categorias ou sem evidências suficientes para determinar o tipo."
+}

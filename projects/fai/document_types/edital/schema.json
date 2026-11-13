@@ -1,0 +1,228 @@
+{
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "orgao": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "processo_seletivo": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "objeto": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modalidade": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "bolsa_mensal": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "vagas": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "carga_horaria_semanal": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "duracao_meses": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "nota_minima": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "requisitos_obrigatorios": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "requisitos_desejaveis": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "documentos_exigidos": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cronograma": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "etapa": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "data_inicio": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "data_fim": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "observacao": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "etapa",
+              "data_inicio",
+              "data_fim",
+              "observacao"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "criterios_avaliacao": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "criterio": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "descricao": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "pontuacao_maxima": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "criterio",
+              "descricao",
+              "pontuacao_maxima"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "orgao",
+        "processo_seletivo",
+        "objeto",
+        "modalidade",
+        "bolsa_mensal",
+        "vagas",
+        "carga_horaria_semanal",
+        "duracao_meses",
+        "nota_minima",
+        "requisitos_obrigatorios",
+        "requisitos_desejaveis",
+        "documentos_exigidos",
+        "cronograma",
+        "criterios_avaliacao"
+      ],
+      "additionalProperties": false
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "enum": [
+              "orgao",
+              "processo_seletivo",
+              "objeto",
+              "modalidade",
+              "bolsa_mensal",
+              "vagas",
+              "carga_horaria_semanal",
+              "duracao_meses",
+              "nota_minima",
+              "requisitos_obrigatorios",
+              "requisitos_desejaveis",
+              "documentos_exigidos",
+              "cronograma",
+              "criterios_avaliacao"
+            ]
+          },
+          "quote": {
+            "type": "string",
+            "minLength": 1
+          },
+          "page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          }
+        },
+        "required": [
+          "field",
+          "quote",
+          "page"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "data",
+    "sources",
+    "warnings"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FAI: edital"
+}

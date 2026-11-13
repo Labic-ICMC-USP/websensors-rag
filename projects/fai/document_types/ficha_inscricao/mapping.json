@@ -1,0 +1,95 @@
+{
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "document_id": {
+        "type": "keyword"
+      },
+      "revision_id": {
+        "type": "keyword"
+      },
+      "document_type": {
+        "type": "keyword"
+      },
+      "filename": {
+        "type": "keyword"
+      },
+      "extraction_version": {
+        "type": "keyword"
+      },
+      "schema_version": {
+        "type": "keyword"
+      },
+      "active": {
+        "type": "boolean"
+      },
+      "data": {
+        "type": "object",
+        "dynamic": "strict",
+        "properties": {
+          "candidato": {
+            "type": "text"
+          },
+          "registro_academico": {
+            "type": "text"
+          },
+          "curso": {
+            "type": "text"
+          },
+          "instituicao": {
+            "type": "text"
+          },
+          "campus": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "telefone": {
+            "type": "text"
+          },
+          "data_inscricao": {
+            "type": "text"
+          },
+          "processo_seletivo": {
+            "type": "text"
+          }
+        }
+      },
+      "source": {
+        "type": "object",
+        "dynamic": "strict",
+        "properties": {
+          "bucket": {
+            "type": "keyword"
+          },
+          "key": {
+            "type": "keyword"
+          }
+        }
+      },
+      "project": {
+        "type": "keyword"
+      },
+      "status": {
+        "type": "keyword"
+      },
+      "needs_review": {
+        "type": "boolean"
+      },
+      "warnings": {
+        "type": "text"
+      },
+      "sources": {
+        "type": "object",
+        "enabled": false
+      },
+      "created_at": {
+        "type": "date"
+      },
+      "updated_at": {
+        "type": "date"
+      }
+    }
+  }
+}

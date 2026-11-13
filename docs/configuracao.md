@@ -201,3 +201,70 @@ api:
 ```
 
 `indexing_workers` controla quantas indexações podem executar em paralelo dentro do processo da API.
+
+
+## Segredos por variável de ambiente
+
+O loader aceita valores YAML inteiros no formato `${VAR}`. Para configurações
+em `config/`, lê o `.env` da raiz do projeto; em outros diretórios, lê o `.env`
+adjacente. Variáveis do processo têm prioridade. Ausência de uma variável
+referenciada interrompe o carregamento, sem fallback para outro provedor.
+O conteúdo de `.env` não é executado nem exportado para o processo.
+
+```yaml
+services:
+  embeddings:
+    endpoint: "https://openrouter.ai/api/v1"
+    path: /embeddings
+    models_path: /embeddings/models
+    api_key: "${OPENROUTER_API_KEY}"
+    model: qwen/qwen3-embedding-4b
+    dimensions: 2560
+```
+
+O catálogo padrão continua `/models`; `models_path` só precisa ser alterado para
+provedores que usam outra rota. Consulte os guias de
+[OpenRouter](../resources/10_openrouter.md) e [MLflow](../resources/09_mlflow.md)
+para a configuração validada nesta máquina.
+
+## Processamento documental
+
+Blocos opcionais (desabilitados em `config/rag.yaml`). Exigem `services.llm`:
+
+```yaml
+services:
+  llm:
+    endpoint: https://openrouter.ai/api/v1
+    model: google/gemini-2.5-flash
+    api_key: "${OPENROUTER_API_KEY}"
+    temperature: 0
+    max_tokens: 2048
+    timeout_seconds: 120
+    retries: 2
+    structured_output: true
+
+classification:
+  enabled: true
+  projects_dir: projects          # categorias, prompts, schemas e mappings
+  max_input_chars: 100000
+
+extraction:
+  enabled: true                   # exige classification
+  structured_output: false
+  max_input_chars: 100000
+  max_output_tokens: 16384
+  include_page_furniture: true    # inclui cabeçalhos/rodapés do Docling
+
+structured_index:
+  enabled: true                   # exige extraction
+  index_prefix: rag-estruturado
+```
+
+Todos esses valores (exceto chaves) entram no `pipeline_hash`: alterá-los, ou
+alterar os arquivos de `projects/`, gera nova revisão no próximo processamento,
+sem reconverter no Docling. Detalhes em [classificação](../resources/11_classificacao.md),
+[extração](../resources/12_extracao.md), [índices estruturados](../resources/13_indices_estruturados.md)
+e [novos tipos documentais](novos_tipos_documentais.md).
+
+A configuração usada nesta máquina está em `config/rag.local.yaml` (fora do Git),
+com segredos referenciados por `${VAR}` no `.env` único da raiz.

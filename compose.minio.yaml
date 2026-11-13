@@ -1,0 +1,33 @@
+name: websensors-rag-minio
+
+services:
+  minio:
+    image: ${MINIO_IMAGE:-quay.io/minio/aistor/minio:latest}
+    restart: unless-stopped
+    command:
+      - minio
+      - server
+      - /mnt/data
+      - --address
+      - :9000
+      - --console-address
+      - :9001
+      - --license
+      - /minio.license
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Defina MINIO_ROOT_USER em .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Defina MINIO_ROOT_PASSWORD em .env}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio-data:/mnt/data
+      - type: bind
+        source: ./.local/minio/minio.license
+        target: /minio.license
+        read_only: true
+        bind:
+          create_host_path: false
+
+volumes:
+  minio-data:

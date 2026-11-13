@@ -1,0 +1,290 @@
+{
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "nome": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lattes_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lattes_url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "orcid": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "data_atualizacao": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "resumo": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "formacao": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "nivel": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "instituicao": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "curso": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "inicio": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "fim": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "situacao": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "titulo": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "nivel",
+              "instituicao",
+              "curso",
+              "inicio",
+              "fim",
+              "situacao",
+              "titulo"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "experiencias": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "instituicao": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "cargo": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "inicio": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "fim": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "atividades": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "instituicao",
+              "cargo",
+              "inicio",
+              "fim",
+              "atividades"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "projetos": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "titulo": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "inicio": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "fim": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "descricao": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "titulo",
+              "inicio",
+              "fim",
+              "descricao"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "publicacoes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "titulo": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "ano": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "veiculo": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "titulo",
+              "ano",
+              "veiculo"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "nome",
+        "lattes_id",
+        "lattes_url",
+        "orcid",
+        "data_atualizacao",
+        "resumo",
+        "formacao",
+        "experiencias",
+        "projetos",
+        "publicacoes"
+      ],
+      "additionalProperties": false
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "enum": [
+              "nome",
+              "lattes_id",
+              "lattes_url",
+              "orcid",
+              "data_atualizacao",
+              "resumo",
+              "formacao",
+              "experiencias",
+              "projetos",
+              "publicacoes"
+            ]
+          },
+          "quote": {
+            "type": "string",
+            "minLength": 1
+          },
+          "page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          }
+        },
+        "required": [
+          "field",
+          "quote",
+          "page"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "data",
+    "sources",
+    "warnings"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FAI: curriculo_lattes"
+}

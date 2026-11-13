@@ -1,0 +1,116 @@
+{
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "document_id": {
+        "type": "keyword"
+      },
+      "revision_id": {
+        "type": "keyword"
+      },
+      "document_type": {
+        "type": "keyword"
+      },
+      "filename": {
+        "type": "keyword"
+      },
+      "extraction_version": {
+        "type": "keyword"
+      },
+      "schema_version": {
+        "type": "keyword"
+      },
+      "active": {
+        "type": "boolean"
+      },
+      "data": {
+        "type": "object",
+        "dynamic": "strict",
+        "properties": {
+          "titular": {
+            "type": "text"
+          },
+          "emissor": {
+            "type": "text"
+          },
+          "competencia": {
+            "type": "text"
+          },
+          "data_emissao": {
+            "type": "text"
+          },
+          "vencimento": {
+            "type": "text"
+          },
+          "valor": {
+            "type": "text"
+          },
+          "endereco": {
+            "type": "object",
+            "dynamic": "strict",
+            "properties": {
+              "logradouro": {
+                "type": "text"
+              },
+              "numero": {
+                "type": "text"
+              },
+              "complemento": {
+                "type": "text"
+              },
+              "bairro": {
+                "type": "text"
+              },
+              "cidade": {
+                "type": "text"
+              },
+              "uf": {
+                "type": "text"
+              },
+              "cep": {
+                "type": "text"
+              },
+              "texto_original": {
+                "type": "text"
+              }
+            }
+          }
+        }
+      },
+      "source": {
+        "type": "object",
+        "dynamic": "strict",
+        "properties": {
+          "bucket": {
+            "type": "keyword"
+          },
+          "key": {
+            "type": "keyword"
+          }
+        }
+      },
+      "project": {
+        "type": "keyword"
+      },
+      "status": {
+        "type": "keyword"
+      },
+      "needs_review": {
+        "type": "boolean"
+      },
+      "warnings": {
+        "type": "text"
+      },
+      "sources": {
+        "type": "object",
+        "enabled": false
+      },
+      "created_at": {
+        "type": "date"
+      },
+      "updated_at": {
+        "type": "date"
+      }
+    }
+  }
+}

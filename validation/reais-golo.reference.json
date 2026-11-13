@@ -1,0 +1,250 @@
+{
+  "dataset": "reais-golo-com-edital",
+  "archive_sha256": "d352429fa6a76b7c7cd23b11a95fd9c0ecea5e02c97eb6ffad7892a3ff9c22da",
+  "reference_status": "classification_labels_confirmed_by_user",
+  "classification_acceptance": {
+    "required_accuracy": 1.0,
+    "document_count": 8,
+    "category_count": 8,
+    "unrepresented_categories": [
+      "outro"
+    ]
+  },
+  "extraction_reference_status": "field_names_proposed; five edital values manually checked; remaining expected_values_not_yet_frozen",
+  "notes": [
+    "Inspeção local com pdfinfo, pdftotext e renderização; não é resultado do Docling.",
+    "Não usar os rótulos nem valores de referência como entrada do classificador.",
+    "Todos os oito documentos são aceitação de um conjunto pequeno, sem holdout.",
+    "Página 2 da conta contém conteúdo visual sem camada textual.",
+    "Currículo termina no meio de uma descrição na página 10.",
+    "O ZIP continua com sete PDFs; edital.pdf foi fornecido separadamente e tem hash próprio."
+  ],
+  "documents": [
+    {
+      "archive_member": "reais-golo/lattes.pdf",
+      "filename": "lattes.pdf",
+      "sha256": "446d0b55c3cbb6766f8a62596353af1c616740e3c8d67417f05fcc364394250d",
+      "bytes": 512609,
+      "pages": 10,
+      "expected_document_type": "curriculo_lattes",
+      "label_status": "confirmed_by_user",
+      "label_confirmed_on": "2026-11-11",
+      "text_layer_non_whitespace_chars": 10391,
+      "requires_ocr": false,
+      "synthetic_test_document": false,
+      "extraction_fields_to_check": [
+        "nome",
+        "lattes_id",
+        "data_atualizacao",
+        "formacao",
+        "experiencias",
+        "projetos"
+      ]
+    },
+    {
+      "archive_member": "reais-golo/mot-golo.pdf",
+      "filename": "mot-golo.pdf",
+      "sha256": "c2f82c853022a142adc359c2e64be3d93695b4288928be8df108a50dd5123c8b",
+      "bytes": 51953,
+      "pages": 1,
+      "expected_document_type": "carta_motivacao",
+      "label_status": "confirmed_by_user",
+      "label_confirmed_on": "2026-11-11",
+      "text_layer_non_whitespace_chars": 1232,
+      "requires_ocr": false,
+      "synthetic_test_document": false,
+      "extraction_fields_to_check": [
+        "candidato",
+        "curso",
+        "instituicao",
+        "destinatario",
+        "processo_seletivo",
+        "motivacao",
+        "competencias",
+        "data"
+      ]
+    },
+    {
+      "archive_member": "reais-golo/ficha_inscricao_marcos_simplificada (1).pdf",
+      "filename": "ficha_inscricao_marcos_simplificada (1).pdf",
+      "sha256": "f80a17521882fc80a1d3a68650fc82f5f228311b5468e335a41095978f7011d3",
+      "bytes": 28495,
+      "pages": 1,
+      "expected_document_type": "ficha_inscricao",
+      "label_status": "confirmed_by_user",
+      "label_confirmed_on": "2026-11-11",
+      "text_layer_non_whitespace_chars": 467,
+      "requires_ocr": false,
+      "synthetic_test_document": true,
+      "extraction_fields_to_check": [
+        "candidato",
+        "registro_academico",
+        "curso",
+        "instituicao",
+        "campus",
+        "email",
+        "telefone",
+        "data_inscricao",
+        "processo_seletivo"
+      ]
+    },
+    {
+      "archive_member": "reais-golo/disp.pdf",
+      "filename": "disp.pdf",
+      "sha256": "0e2e662520a92dcf2e7a699b1dc8a0d0676616898dc6ff92aea29144d0d46011",
+      "bytes": 46614,
+      "pages": 1,
+      "expected_document_type": "declaracao_disponibilidade",
+      "label_status": "confirmed_by_user",
+      "label_confirmed_on": "2026-11-11",
+      "text_layer_non_whitespace_chars": 644,
+      "requires_ocr": false,
+      "synthetic_test_document": false,
+      "extraction_fields_to_check": [
+        "declarante",
+        "local",
+        "modalidade",
+        "carga_horaria_semanal",
+        "processo_seletivo",
+        "data"
+      ]
+    },
+    {
+      "archive_member": "reais-golo/comprovativo-matricula.pdf",
+      "filename": "comprovativo-matricula.pdf",
+      "sha256": "70cc369a9e6c07ff15bd750b22caae4fba38dcaf54aabfebe190a34f13d876c1",
+      "bytes": 39856,
+      "pages": 1,
+      "expected_document_type": "comprovante_matricula",
+      "label_status": "confirmed_by_user",
+      "label_confirmed_on": "2026-11-11",
+      "text_layer_non_whitespace_chars": 681,
+      "requires_ocr": false,
+      "synthetic_test_document": false,
+      "extraction_fields_to_check": [
+        "aluno",
+        "instituicao",
+        "unidade",
+        "matricula",
+        "nivel",
+        "programa",
+        "situacao",
+        "orientador",
+        "data_emissao",
+        "validade_codigo"
+      ]
+    },
+    {
+      "archive_member": "reais-golo/boleto_09_43_33.pdf",
+      "filename": "boleto_09_43_33.pdf",
+      "sha256": "59bdd281977c1c3d03c478a3ce765a3511fa7350ea8c247b0b6572753529e295",
+      "bytes": 761512,
+      "pages": 2,
+      "expected_document_type": "comprovante_residencia",
+      "label_status": "confirmed_by_user",
+      "label_confirmed_on": "2026-11-11",
+      "text_layer_non_whitespace_chars": 2907,
+      "requires_ocr": false,
+      "synthetic_test_document": false,
+      "extraction_fields_to_check": [
+        "titular",
+        "endereco",
+        "emissor",
+        "competencia",
+        "data_emissao",
+        "vencimento",
+        "valor"
+      ]
+    },
+    {
+      "archive_member": "reais-golo/hab.pdf",
+      "filename": "hab.pdf",
+      "sha256": "0614a53acde31fd313c98db9bb93d900f90e8953997e218f931db1c7d104e1a3",
+      "bytes": 5227003,
+      "pages": 1,
+      "expected_document_type": "documento_identificacao_foto",
+      "label_status": "confirmed_by_user",
+      "label_confirmed_on": "2026-11-11",
+      "text_layer_non_whitespace_chars": 0,
+      "requires_ocr": true,
+      "synthetic_test_document": false,
+      "extraction_fields_to_check": [
+        "nome",
+        "tipo_identificacao",
+        "rg",
+        "orgao_emissor",
+        "cpf",
+        "data_nascimento",
+        "filiacao",
+        "registro",
+        "categoria",
+        "validade",
+        "data_emissao",
+        "local_emissao"
+      ]
+    },
+    {
+      "source_file": "edital.pdf",
+      "source_kind": "external_file",
+      "filename": "edital.pdf",
+      "sha256": "256defe9144de684553a30b6aa4cf86041002d360e894a2b82584ee97dfcc2a2",
+      "bytes": 341344,
+      "pages": 12,
+      "expected_document_type": "edital",
+      "label_status": "confirmed_by_user",
+      "label_confirmation_basis": "Usuário forneceu o documento explicitamente como edital.",
+      "label_confirmed_on": "2026-11-11",
+      "text_layer_non_whitespace_chars": 13102,
+      "requires_ocr": false,
+      "synthetic_test_document": false,
+      "extraction_fields_to_check": [
+        "orgao",
+        "processo_seletivo",
+        "objeto",
+        "vagas",
+        "requisitos_obrigatorios",
+        "requisitos_desejaveis",
+        "documentos_exigidos",
+        "cronograma",
+        "carga_horaria_semanal",
+        "bolsa_mensal",
+        "duracao_meses",
+        "criterios_avaliacao",
+        "nota_minima",
+        "avisos_inconsistencias"
+      ],
+      "extraction_checks": [
+        {
+          "field": "vagas",
+          "expected": 1,
+          "source_page": 1
+        },
+        {
+          "field": "carga_horaria_semanal",
+          "expected": 20,
+          "source_page": 7
+        },
+        {
+          "field": "bolsa_mensal",
+          "expected_text": "R$ 1.140,00",
+          "source_page": 7
+        },
+        {
+          "field": "duracao_meses",
+          "expected": 12,
+          "source_page": 7
+        },
+        {
+          "field": "nota_minima",
+          "expected_text": "7,0",
+          "source_page": 5
+        }
+      ],
+      "consistency_checks": [
+        "Preservar publicação em 03/02/2026 e início de inscrições em 02/02/2026, apontando início anterior à publicação.",
+        "Preservar resultado final em 20/02/2026 no cronograma e referência a acompanhamento do resultado em 18/02/2026 na seção 9.2; sinalizar divergência, sem corrigir automaticamente.",
+        "Distinguir páginas físicas 10–12 da numeração reiniciada 1–3 nos anexos."
+      ]
+    }
+  ]
+}
